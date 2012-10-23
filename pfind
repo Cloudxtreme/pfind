@@ -1,0 +1,39 @@
+#!/usr/bin/perl -w
+use strict;
+my $state;
+
+sub check_list($) {
+	my $list = shift;
+	if( not defined $list ) {
+		die "list not defined";
+	} elsif( not ref $list ) {
+		$list eq "all" or die;
+		$list = [];
+		opendir PROC, "/proc" or die $!;
+		while( readdir PROC ) {
+			/^\d+$/ or next;
+			push @$list, $_;
+		}
+		closedir PROC or die $!;
+		return $list;
+	} elsif( "ARRAY" eq ref $list ) {
+		return $list;
+	} else {
+		die;
+	}
+}
+
+sub get_exe($) {
+	my $pid = shift;
+	return( $state->{$pid}{"exe"} //= ( readlink "/proc/$pid/exe" // "" ) );
+}
+
+sub find_exe($$) {
+	my ($list, $re) = @_;
+	$list = check_list $list;
+	$list = [ grep { get_exe($_) =~ /$re/ } @$list ];
+	return $list;
+}
+
+use Data::Dumper; print Dumper find_exe "all", "pe"; ################
+use Data::Dumper; print Dumper $state; ##############
