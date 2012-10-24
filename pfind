@@ -2,20 +2,23 @@
 use strict;
 my $state;
 
+sub get_proc_list() {
+	my $list = [];
+	opendir PROC, "/proc" or die $!;
+	while( readdir PROC ) {
+		push @$list, $_ if /^\d+$/;
+	}
+	closedir PROC or die $!;
+	return $list;
+}
+
 sub check_list($) {
 	my $list = shift;
 	if( not defined $list ) {
 		die "list not defined";
 	} elsif( not ref $list ) {
 		$list eq "all" or die;
-		$list = [];
-		opendir PROC, "/proc" or die $!;
-		while( readdir PROC ) {
-			/^\d+$/ or next;
-			push @$list, $_;
-		}
-		closedir PROC or die $!;
-		return $list;
+		return( $state->{"all"} //= get_proc_list );
 	} elsif( "ARRAY" eq ref $list ) {
 		return $list;
 	} else {
