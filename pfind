@@ -28,15 +28,40 @@ sub check_list($) {
 
 sub get_exe($) {
 	my $pid = shift;
-	return( $state->{$pid}{"exe"} //= ( readlink "/proc/$pid/exe" // "" ) );
+	return( readlink("/proc/$pid/exe") // "" );
+}
+sub get_cwd($) {
+	my $pid = shift;
+	return( readlink("/proc/$pid/cwd") // "" );
+}
+sub get_root($) {
+	my $pid = shift;
+	return( readlink("/proc/$pid/root") // "" );
 }
 
-sub find_exe($$) {
-	my ($list, $re) = @_;
+my %getters = (
+	exe	=> \&get_exe,
+	cwd	=> \&get_cwd,
+	root	=> \&get_root,
+);
+
+sub cached_get($$) {
+	my ($pid, $name) = @_;
+	if( exists $state->{$pid}{$name} ) {
+		return $state->{$pid}{$name};
+	} elsif( exists $getters{$name} ) {
+		return( $state->{$pid}{$name} = $getters{$name}->($pid) );
+	} else {
+		die "unkown property: $name";
+	}
+}
+
+sub find_by_prop($$$) {
+	my ($list, $re, $name) = @_;
 	$list = check_list $list;
-	$list = [ grep { get_exe($_) =~ /$re/ } @$list ];
-	return $list;
+	return [ grep { cached_get($_, $name) =~ /$re/ } @$list ];
 }
 
-use Data::Dumper; print Dumper find_exe "all", "pe"; ################
+use Data::Dumper; print Dumper find_by_prop "all", "pe", "exe"; ################
+use Data::Dumper; print Dumper find_by_prop "all", "/proc/7613", "cwd"; ################
 use Data::Dumper; print Dumper $state; ##############
