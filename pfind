@@ -1,5 +1,6 @@
 #!/usr/bin/perl -w
 use strict;
+use Parse::Yapp;
 my $state;
 
 sub get_proc_list() {
@@ -62,6 +63,108 @@ sub find_by_prop($$$) {
 	return [ grep { cached_get($_, $name) =~ /$re/ } @$list ];
 }
 
-use Data::Dumper; print Dumper find_by_prop "all", "pe", "exe"; ################
-use Data::Dumper; print Dumper find_by_prop "all", "/proc/7613", "cwd"; ################
-use Data::Dumper; print Dumper $state; ##############
+my %func0 = (
+	-true	=> 1,
+	-false	=> 1,
+);
+my %func1 = (
+	-exe	=> 1,
+	-cwd	=> 1,
+	-root	=> 1,
+);
+my %func2 = (
+	-status	=> 1,
+);
+
+sub tokenize(@) {
+	my @out = ();
+	while(@_) {
+		my $a = shift;
+		if( $a =~ /^[\(\)\[\]\{\},]$/ ) { # parentheses and comma
+			push @out, [ $a, $a ];
+		} elsif( $a =~ /^-a(nd?)$/ ) {
+			push @out, [ 'AND', $a ];
+		} elsif( $a =~ /^-or?$/ ) {
+			push @out, [ 'OR', $a ];
+		} elsif( $a =~ /^-(\w+)$/ ) {
+			if( $func0{$a} ) {
+				push @out, [ 'FUNC', [ 'FUNC', $a ] ];
+			} elsif( $func1{$a} ) {
+				@_ or die "function $a must have an arg\n";
+				push @out, [ 'FUNC', [ 'FUNC', $a, shift ] ];
+			} elsif( $func2{$a} ) {
+				@_ > 1 or die "function $a must have two args\n";
+				push @out, [ 'FUNC', [ 'FUNC', $a, shift, shift ] ];
+			}
+		} else {
+			die "unknown token: $a\n";
+		}
+	}
+	return [ @out ];
+}
+
+sub mklexer($) {
+	my $tokens_ref = shift;
+	my @tokens = @$tokens_ref;
+	return sub {
+		if( @tokens ) {
+			my $token = shift @tokens;
+			return ( @$token );
+		} else {
+			return ( '', undef );
+		}
+	}
+}
+
+my $grammar = <<'GRAMMAR';
+%%
+exp:	comma_exp ;
+comma_exp:
+	or_exp
+	| or_exp ',' or_exp	{ [ 'COMMA', $_[1], $_[3] ] }
+	;
+or_exp:
+	and_exp
+	| and_exp or and_exp	{ [ 'OR', $_[1], $_[3] ] }
+	;
+or:	OR ;
+and_exp:
+	exp1
+	| exp1 and exp1		{ [ 'AND', $_[1], $_[3] ] }
+	;
+and:	#empty
+	| AND # -a | -and
+	;
+exp1:
+	FUNC
+	| '(' exp ')'		{ $_[2] }
+	| '{' exp '}'		{ $_[2] }
+	| '[' exp ']'		{ $_[2] }
+	;
+%%
+GRAMMAR
+
+sub mktree(@) {
+	my @cmdline = @_;
+	push @cmdline, "-true" unless @cmdline;
+
+	my $grammar_parser = new Parse::Yapp( input => $grammar );
+	eval $grammar_parser->Output(
+		classname	=> "grammar_pfind",
+	);
+	die $@ if $@;
+
+	my $parser = new grammar_pfind;
+	return $parser->YYParse(
+		yylex => mklexer( tokenize @cmdline ),
+		yyerror => sub{ die "Parse error\n" },
+	);
+}
+
+#use Data::Dumper; print Dumper find_by_prop "all", "pe", "exe"; ################
+#use Data::Dumper; print Dumper find_by_prop "all", "/proc/7613", "cwd"; ################
+#use Data::Dumper; print Dumper $state; ##############
+
+use Data::Dumper; print "tree: ", Dumper mktree( @ARGV ); ############### ./pfind -true -or [ -exe test -cwd / -o -status envID 123 ]
+
+
