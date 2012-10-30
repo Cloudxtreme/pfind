@@ -3,14 +3,15 @@ use strict;
 use Parse::Yapp;
 my $state;
 
-sub get_proc_list() {
+sub get_full_proc_list() {
+	return $state->{"all"} if exists $state->{"all"};
 	my $list = [];
 	opendir PROC, "/proc" or die $!;
 	while( readdir PROC ) {
 		push @$list, $_ if /^\d+$/;
 	}
 	closedir PROC or die $!;
-	return $list;
+	return ( $state->{"all"} = $list );
 }
 
 sub check_list($) {
@@ -19,7 +20,7 @@ sub check_list($) {
 		die "list not defined";
 	} elsif( not ref $list ) {
 		$list eq "all" or die;
-		return( $state->{"all"} //= get_proc_list );
+		return get_full_proc_list;
 	} elsif( "ARRAY" eq ref $list ) {
 		return $list;
 	} else {
