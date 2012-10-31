@@ -51,9 +51,17 @@ sub find_by_prop($$$) {
 	return [ grep { cached_get($_, $name) =~ /$re/ } @$list ];
 }
 
+sub func_list($) {
+	my $list = shift;
+	my @sorted = sort { $a <=> $b } @$list;
+	print "-list @sorted\n";
+	return $list;
+}
+
 my %func0 = (
 	-true	=> sub { return $_[0] },
 	-false	=> sub { return [] },
+	-list	=> \&func_list,
 );
 my %func1 = (
 	-exe	=> sub { find_by_prop( shift, shift, "-exe" ) },
