@@ -258,12 +258,36 @@ sub evaltree($$) {
 	}
 }
 
+my %is_action;
+$is_action{$_} = 1 foreach qw/-list -printf/;
+sub tree_has_actions($);
+sub tree_has_actions($) {
+	my $tree = shift;
+	my @copy = @$tree;
+	my $op = shift @copy;;
+	if( $op =~ /^(COMMA|OR|AND)$/ ) {
+		foreach my $subtree (@copy) {
+			return 1 if tree_has_actions($subtree);
+		}
+	} elsif( $op eq 'FUNC' ) {
+		my $name = shift @copy;
+		return $is_action{$name};
+	} else {
+		die "unknown op: $op\n";
+	}
+}
+
+sub main() {
+	my $tree = mktree( @ARGV ); ############### ./pfind -true -or [ -exe test -cwd / -o -status envID 123 ]
+	#use Data::Dumper; print "tree: ", Dumper $tree; ##############################
+	my $do_print_list = not tree_has_actions($tree); # the following will destroy $tree
+	my $value = evaltree( get_full_proc_list(), $tree );
+	#use Data::Dumper; print "value: ", Dumper $value; ##############################
+	func_list($value) if $do_print_list;
+}
+
+main;
+
 #use Data::Dumper; print Dumper find_by_prop "all", "pe", "exe"; ################
 #use Data::Dumper; print Dumper find_by_prop "all", "/proc/7613", "cwd"; ################
 #use Data::Dumper; print Dumper $state; ##############
-
-my $tree = mktree( @ARGV ); ############### ./pfind -true -or [ -exe test -cwd / -o -status envID 123 ]
-use Data::Dumper; print "tree: ", Dumper $tree; ##############################
-my $value = evaltree( get_full_proc_list(), $tree );
-use Data::Dumper; print "value: ", Dumper $value; ##############################
-
