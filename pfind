@@ -28,31 +28,18 @@ sub check_list($) {
 	}
 }
 
-sub get_exe($) {
-	my $pid = shift;
-	return( readlink("/proc/$pid/exe") // "" );
-}
-sub get_cwd($) {
-	my $pid = shift;
-	return( readlink("/proc/$pid/cwd") // "" );
-}
-sub get_root($) {
-	my $pid = shift;
-	return( readlink("/proc/$pid/root") // "" );
-}
-
-my %getters = (
-	exe	=> \&get_exe,
-	cwd	=> \&get_cwd,
-	root	=> \&get_root,
+my %getters0 = (
+	-exe	=> sub { readlink("/proc/$_[0]/exe") // "" },
+	-cwd	=> sub { readlink("/proc/$_[0]/cwd") // "" },
+	-root	=> sub { readlink("/proc/$_[0]/root") // "" },
 );
 
 sub cached_get($$) {
 	my ($pid, $name) = @_;
 	if( exists $state->{$pid}{$name} ) {
 		return $state->{$pid}{$name};
-	} elsif( exists $getters{$name} ) {
-		return( $state->{$pid}{$name} = $getters{$name}->($pid) );
+	} elsif( exists $getters0{$name} ) {
+		return( $state->{$pid}{$name} = $getters0{$name}->($pid) );
 	} else {
 		die "unkown property: $name";
 	}
@@ -65,16 +52,16 @@ sub find_by_prop($$$) {
 }
 
 my %func0 = (
-	-true	=> 1,
-	-false	=> 1,
+	-true	=> sub { return $_[0] },
+	-false	=> sub { return [] },
 );
 my %func1 = (
-	-exe	=> 1,
-	-cwd	=> 1,
-	-root	=> 1,
+	-exe	=> sub { find_by_prop( shift, shift, "-exe" ) },
+	-cwd	=> sub { find_by_prop( shift, shift, "-cwd" ) },
+	-root	=> sub { find_by_prop( shift, shift, "-root" ) },
 );
 my %func2 = (
-	-status	=> 1,
+	-status	=> sub { ... },
 );
 
 sub tokenize(@) {
@@ -162,10 +149,65 @@ sub mktree(@) {
 	);
 }
 
+sub evalfunc($$@) {
+	my ($list, $name, @args) = @_;
+	if( $func0{$name} ) {
+		die "function $name takes no args\n" if @args;
+		return $func0{$name}->($list);
+	} elsif( $func1{$name} ) {
+		die "function $name takes 1 arg\n" unless 1 == @args;
+		my ($arg1) = (@args);
+		return $func1{$name}->($list, $arg1);
+	} elsif( $func2{$name} ) {
+		die "function $name takes 2 args\n" unless 2 == @args;
+		my ($arg1, $arg2) = (@args);
+		return $func2{$name}->($list, $arg1, $arg2);
+	} else {
+		die "unknown function: $name\n";
+	}
+}
+
+sub evaltree($$);
+sub evaltree($$) {
+	my ($list, $tree) = @_;
+	'ARRAY' eq ref $tree or die;
+	my $op = shift @$tree;
+	if( $op eq 'COMMA' ) {
+		@$tree > 1 or die "$op takes at least two args\n";
+		my $out;
+		$out = evaltree( $list, $_ ) foreach @$tree;
+		return $out;
+	} elsif( $op eq 'OR' ) {
+		@$tree > 1 or die "$op takes at least two args\n";
+		my %pid_set = ();
+		foreach (@$tree) {
+			my $out = evaltree( $list, $_ );
+			$pid_set{$_} = 1 foreach @$out;
+		}
+		return [ keys %pid_set ];
+	} elsif( $op eq 'AND' ) {
+		@$tree > 1 or die "$op takes at least two args\n";
+		$list = check_list $list;
+		foreach (@$tree) {
+			last unless @$list;
+			$list = evaltree( $list, $_ );
+		}
+		return $list;
+	} elsif( $op eq 'FUNC' ) {
+		@$tree or die "no function name\n";
+		my $name = shift @$tree;
+		return evalfunc( $list, $name, @$tree );
+	} else {
+		die "unknown op: $op\n";
+	}
+}
+
 #use Data::Dumper; print Dumper find_by_prop "all", "pe", "exe"; ################
 #use Data::Dumper; print Dumper find_by_prop "all", "/proc/7613", "cwd"; ################
 #use Data::Dumper; print Dumper $state; ##############
 
-use Data::Dumper; print "tree: ", Dumper mktree( @ARGV ); ############### ./pfind -true -or [ -exe test -cwd / -o -status envID 123 ]
-
+my $tree = mktree( @ARGV ); ############### ./pfind -true -or [ -exe test -cwd / -o -status envID 123 ]
+use Data::Dumper; print "tree: ", Dumper $tree; ##############################
+my $value = evaltree( get_full_proc_list(), $tree );
+use Data::Dumper; print "value: ", Dumper $value; ##############################
 
