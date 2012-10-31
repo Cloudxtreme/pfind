@@ -36,7 +36,9 @@ my %getters0 = (
 
 sub cached_get($$) {
 	my ($pid, $name) = @_;
-	if( exists $state->{$pid}{$name} ) {
+	if( $name eq "-pid" ) {
+		return $pid;
+	} elsif( exists $state->{$pid}{$name} ) {
 		return $state->{$pid}{$name};
 	} elsif( exists $getters0{$name} ) {
 		return( $state->{$pid}{$name} = $getters0{$name}->($pid) );
@@ -58,6 +60,51 @@ sub func_list($) {
 	return $list;
 }
 
+my %sprintf_escapes = (
+	a	=> "\a",
+	b	=> "\b",
+	f	=> "\f",
+	n	=> "\n",
+	r	=> "\r",
+	t	=> "\t",
+	0	=> "\0",
+	"\\"	=> "\\",
+);
+
+sub do_sprintf_escape($) {
+	my $char = shift;
+	die unless 1 == length $char;
+	return $sprintf_escapes{$char} // "\\$char";
+}
+
+sub get_value_for_printf($$) {
+	my ($pid, $name) = @_;
+	my @names = split /::/, $name;
+	if( @names > 1 ) {
+		...
+	} else {
+		return cached_get( $pid, "-$name" );
+	}
+}
+
+sub func_printf($) {
+	my ($list, $format) = @_;
+	my @sorted = sort { $a <=> $b } @$list;
+	my $out = "";
+	foreach my $pid (@sorted) {
+		my $add = $format;
+		$add =~ s{\\(.)}{do_sprintf_escape($1)}ge;
+		$add =~ s{\\x([01-9a-f][01-9a-f])}{chr hex $1}gie;
+		$add =~ s{%([a-z]\w*(::[a-z]\w*)*)}{get_value_for_printf( $pid, $1 )}gie;
+		$add =~ s{%\[([a-z]\w*(::[a-z]\w*)*)\]}{get_value_for_printf( $pid, $1 )}gie;
+		$add =~ s{%\{([a-z]\w*(::[a-z]\w*)*)\}}{get_value_for_printf( $pid, $1 )}gie;
+		$add =~ s{%\(([a-z]\w*(::[a-z]\w*)*)\)}{get_value_for_printf( $pid, $1 )}gie;
+		$out .= $add;
+	}
+	print $out;
+	return $list;
+}
+
 my %func0 = (
 	-true	=> sub { return $_[0] },
 	-false	=> sub { return [] },
@@ -67,6 +114,7 @@ my %func1 = (
 	-exe	=> sub { find_by_prop( shift, shift, "-exe" ) },
 	-cwd	=> sub { find_by_prop( shift, shift, "-cwd" ) },
 	-root	=> sub { find_by_prop( shift, shift, "-root" ) },
+	-printf	=> \&func_printf,
 );
 my %func2 = (
 	-status	=> sub { ... },
