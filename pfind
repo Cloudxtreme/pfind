@@ -308,7 +308,7 @@ pattern_match() instead of ~= $re
 -not (aka !)
 -print/-printf/-print0 / -fprint
 %uptime -lt 50
--kernel-thread/-userspace
+-kernel-thread/-userspace (use VmSize in /status or PF_KTHREAD flag in /stat)
 threads
 -exec cmd {} +/';'
 common description of shorthands for both getters (-title = -status title) and print directives (%title = %status::title)
@@ -331,3 +331,4 @@ printf: %{func2{arbitrary arg with spaces and slashes}} (not really needed yet s
 -sprintf (should be allowed everywhere where simple string arg is allowed)
 better -or semantics, just like it's done for -and (do not run second check for processes which are already checked by the first arg)
 global vars: %::prefix := "some string" -printf "%::prefix %pid\n"; maybe find something better than %::a
+think about pfind exit status and its usage in scripts
