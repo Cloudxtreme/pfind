@@ -109,16 +109,16 @@ my $grammar = <<'GRAMMAR';
 exp:	comma_exp ;
 comma_exp:
 	or_exp
-	| or_exp ',' or_exp	{ [ 'COMMA', $_[1], $_[3] ] }
+	| or_exp ',' comma_exp	{ [ 'COMMA', $_[1], $_[3] ] }
 	;
 or_exp:
 	and_exp
-	| and_exp or and_exp	{ [ 'OR', $_[1], $_[3] ] }
+	| and_exp or or_exp	{ [ 'OR', $_[1], $_[3] ] }
 	;
 or:	OR ;
 and_exp:
 	exp1
-	| exp1 and exp1		{ [ 'AND', $_[1], $_[3] ] }
+	| exp1 and and_exp	{ [ 'AND', $_[1], $_[3] ] }
 	;
 and:	#empty
 	| AND # -a | -and
