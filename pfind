@@ -54,7 +54,7 @@ sub find_by_prop($$$) {
 sub func_list($) {
 	my $list = shift;
 	my @sorted = sort { $a <=> $b } @$list;
-	print "-list @sorted\n";
+	print "@sorted\n";
 	return $list;
 }
 
