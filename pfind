@@ -272,6 +272,7 @@ sub tree_has_actions($) {
 		foreach my $subtree (@copy) {
 			return 1 if tree_has_actions($subtree);
 		}
+		return undef;
 	} elsif( $op eq 'FUNC' ) {
 		my $name = shift @copy;
 		return $is_action{$name};
@@ -330,5 +331,5 @@ help, README.md and POD
 printf: %{func2{arbitrary arg with spaces and slashes}} (not really needed yet since -pidfile is not for printf)
 -sprintf (should be allowed everywhere where simple string arg is allowed)
 better -or semantics, just like it's done for -and (do not run second check for processes which are already checked by the first arg)
-global vars: %::prefix := "some string" -printf "%::prefix %pid\n"; maybe find something better than %::a
+global vars: %::prefix := "some string" -printf "%::prefix %pid\n"; maybe find something better than %::a; also we need something like %::uptime (preset readonly global vars)
 think about pfind exit status and its usage in scripts
