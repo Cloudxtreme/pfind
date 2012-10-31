@@ -294,3 +294,40 @@ main;
 #use Data::Dumper; print Dumper find_by_prop "all", "pe", "exe"; ################
 #use Data::Dumper; print Dumper find_by_prop "all", "/proc/7613", "cwd"; ################
 #use Data::Dumper; print Dumper $state; ##############
+
+__END__
+
+TODO:
+
+make cached_get work with func2 (-status)
+pattern_match() instead of ~= $re
+(maybe) //= "" in cached_get
+-use glob [ exp ] | -use perlre [ exp ]
+(maybe) reduce [AND exp1 [AND exp2 exp3]] to [AND exp1 exp2 exp3] etc
+-xor (don't ask me why)
+-not (aka !)
+-print/-printf/-print0 / -fprint
+%uptime -lt 50
+-kernel-thread/-userspace
+threads
+-exec cmd {} +/';'
+common description of shorthands for both getters (-title = -status title) and print directives (%title = %status::title)
+func2 -status
+remove check_list (just use get_full_proc_list() instead of "all")
+check that printf works with %status::title (when it's done)
+check what happens if we run printf on non-existent pids
+-pidlist 1 243 435 345 ';'
+FIXME: \x?? may produce % which will be used later in printf (not a bug?)
+implement all ...
+do not destroy the tree in evaltree()
+help, README.md and POD
+-ps-u = -exec ps u {} +, -ps-j, -ps-jf
+-ok (interactive -exec)
+-signal, -kill = -signal hup, -term = -signal term, -hup = -signal hup, -exists = -signal 0 (-exists is not an action)
+-opened, -reads, -writes, -locks
+-sort asc/desc (and remove sorts in -list and -printf)
+-pidfile /var/run/apache (think what happens if the pid is not in the pid list passed into the pidfile getter)
+printf: %{func2{arbitrary arg with spaces and slashes}} (not really needed yet since -pidfile is not for printf)
+-sprintf (should be allowed everywhere where simple string arg is allowed)
+better -or semantics, just like it's done for -and (do not run second check for processes which are already checked by the first arg)
+global vars: %::prefix := "some string" -printf "%::prefix %pid\n"; maybe find something better than %::a
