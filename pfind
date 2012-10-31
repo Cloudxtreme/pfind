@@ -169,19 +169,22 @@ comma_exp:
 	;
 or_exp:
 	and_exp
-	| and_exp or or_exp	{ [ 'OR', $_[1], $_[3] ] }
+	| and_exp OR or_exp	{ [ 'OR', $_[1], $_[3] ] }
 	;
-or:	OR ;
 and_exp:
-	exp1
-	| exp1 and and_exp	{ [ 'AND', $_[1], $_[3] ] }
+	atom
+	| atom and and_exp	{ [ 'AND', $_[1], $_[3] ] }
 	;
-and:	#empty
+and:
+	#empty
 	| AND # -a | -and
 	;
-exp1:
+atom:
 	FUNC
-	| '(' exp ')'		{ $_[2] }
+	| block
+	;
+block:
+	'(' exp ')'		{ $_[2] }
 	| '{' exp '}'		{ $_[2] }
 	| '[' exp ']'		{ $_[2] }
 	;
