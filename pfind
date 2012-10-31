@@ -228,34 +228,35 @@ sub evalfunc($$@) {
 
 sub evaltree($$);
 sub evaltree($$) {
-	my ($list, $tree) = @_;
-	'ARRAY' eq ref $tree or die;
-	my $op = shift @$tree;
+	my ($list, $tree_ref) = @_;
+	'ARRAY' eq ref $tree_ref or die;
+	my (@tree) = (@$tree_ref); # make a copy
+	my $op = shift @tree;
 	if( $op eq 'COMMA' ) {
-		@$tree > 1 or die "$op takes at least two args\n";
+		@tree > 1 or die "$op takes at least two args\n";
 		my $out;
-		$out = evaltree( $list, $_ ) foreach @$tree;
+		$out = evaltree( $list, $_ ) foreach @tree;
 		return $out;
 	} elsif( $op eq 'OR' ) {
-		@$tree > 1 or die "$op takes at least two args\n";
+		@tree > 1 or die "$op takes at least two args\n";
 		my %pid_set = ();
-		foreach (@$tree) {
+		foreach (@tree) {
 			my $out = evaltree( $list, $_ );
 			$pid_set{$_} = 1 foreach @$out;
 		}
 		return [ keys %pid_set ];
 	} elsif( $op eq 'AND' ) {
-		@$tree > 1 or die "$op takes at least two args\n";
+		@tree > 1 or die "$op takes at least two args\n";
 		$list = check_list $list;
-		foreach (@$tree) {
+		foreach (@tree) {
 			last unless @$list;
 			$list = evaltree( $list, $_ );
 		}
 		return $list;
 	} elsif( $op eq 'FUNC' ) {
-		@$tree or die "no function name\n";
-		my $name = shift @$tree;
-		return evalfunc( $list, $name, @$tree );
+		@tree or die "no function name\n";
+		my $name = shift @tree;
+		return evalfunc( $list, $name, @tree );
 	} else {
 		die "unknown op: $op\n";
 	}
@@ -284,7 +285,7 @@ sub tree_has_actions($) {
 sub main() {
 	my $tree = mktree( @ARGV ); ############### ./pfind -true -or [ -exe test -cwd / -o -status envID 123 ]
 	#use Data::Dumper; print "tree: ", Dumper $tree; ##############################
-	my $do_print_list = not tree_has_actions($tree); # the following will destroy $tree
+	my $do_print_list = not tree_has_actions($tree);
 	my $value = evaltree( get_full_proc_list(), $tree );
 	#use Data::Dumper; print "value: ", Dumper $value; ##############################
 	func_list($value) if $do_print_list;
@@ -320,7 +321,6 @@ check what happens if we run printf on non-existent pids
 -pidlist 1 243 435 345 ';'
 FIXME: \x?? may produce % which will be used later in printf (not a bug?)
 implement all ...
-do not destroy the tree in evaltree()
 help, README.md and POD
 -ps-u = -exec ps u {} +, -ps-j, -ps-jf
 -ok (interactive -exec)
@@ -333,3 +333,4 @@ printf: %{func2{arbitrary arg with spaces and slashes}} (not really needed yet s
 better -or semantics, just like it's done for -and (do not run second check for processes which are already checked by the first arg)
 global vars: %::prefix := "some string" -printf "%::prefix %pid\n"; maybe find something better than %::a; also we need something like %::uptime (preset readonly global vars)
 think about pfind exit status and its usage in scripts
+(maybe) parse functions in parser, not just in tokenizer
