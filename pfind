@@ -304,7 +304,7 @@ TODO:
 make cached_get work with func2 (-status)
 pattern_match() instead of ~= $re
 (maybe) //= "" in cached_get
--use glob [ exp ] | -use perlre [ exp ]
+-use glob [ exp ] | -use perlre [ exp ] - WON'T, instead make globbing the default for functions and use "%a =~ re" for perlre
 (maybe) reduce [AND exp1 [AND exp2 exp3]] to [AND exp1 exp2 exp3] etc
 -xor (don't ask me why)
 -not (aka !)
@@ -331,6 +331,15 @@ help, README.md and POD
 printf: %{func2{arbitrary arg with spaces and slashes}} (not really needed yet since -pidfile is not for printf)
 -sprintf (should be allowed everywhere where simple string arg is allowed)
 better -or semantics, just like it's done for -and (do not run second check for processes which are already checked by the first arg)
-global vars: %::prefix := "some string" -printf "%::prefix %pid\n"; maybe find something better than %::a; also we need something like %::uptime (preset readonly global vars)
+global vars: %::prefix := "some string" -printf "%::prefix %pid\n"; maybe find something better than %::a;
+	also we need something like %::uptime (preset readonly global vars)
 think about pfind exit status and its usage in scripts
 (maybe) parse functions in parser, not just in tokenizer
+see "ps -o" for more printf directives
+(won't) compile formatted strings into subs
+do not add to many functions, prefer things like %exe -m '*bash', %cwd =~ '^a', %runtime -lt %{interval{5days}}, %vsz -gt %{size{5m}} etc
+-!m shorthand: "%exe -!m '*bash'" is "-not %exe -m '*bash'" (this seems to be the only useful case for such shorthand)
+-lt/-gt/-eq/-ne for numeric comparison, ==/!= for strings, =~/!~ for perlre, := for assignment, = is never used
+if string is started with % it is formatted (or a variable right before := operator), else it is quoted (not formatted);
+	-sprintf <string> is always formatted, -quote <string> is always quoted
+(maybe) some network checks
