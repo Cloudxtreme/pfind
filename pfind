@@ -323,7 +323,7 @@ FIXME: \x?? may produce % which will be used later in printf (not a bug?)
 implement all ...
 help, README.md and POD
 -ps-u = -exec ps u {} +, -ps-j, -ps-jf
--ok (interactive -exec)
+-ok (interactive -exec, but find a better name), probably -interactive modifier for all actions; maybe allow custom prompt strings
 -signal, -kill = -signal hup, -term = -signal term, -hup = -signal hup, -exists = -signal 0 (-exists is not an action)
 -opened, -reads, -writes, -locks
 -sort asc/desc (and remove sorts in -list and -printf)
