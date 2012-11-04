@@ -105,7 +105,7 @@ sub get_value_for_printf($$) {
 	}
 }
 
-sub func_printf($) {
+sub func_printf($$) {
 	my ($list, $format) = @_;
 	my @sorted = sort { $a <=> $b } @$list;
 	my $out = "";
