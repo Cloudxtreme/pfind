@@ -57,13 +57,13 @@ sub get_stat($) {
 }
 
 my %getters0 = ( # see also %alias0
-	-pid    => sub { return shift },
-	-exe	=> sub { readlink("/proc/$_[0]/exe") // "" },
-	-cwd	=> sub { readlink("/proc/$_[0]/cwd") // "" },
-	-root	=> sub { readlink("/proc/$_[0]/root") // "" },
+	"pid"    => sub { return shift },
+	"exe"	=> sub { readlink("/proc/$_[0]/exe") // "" },
+	"cwd"	=> sub { readlink("/proc/$_[0]/cwd") // "" },
+	"root"	=> sub { readlink("/proc/$_[0]/root") // "" },
 );
 my %getters1 = (
-	-stat	=> \&get_stat,
+	"stat"	=> \&get_stat,
 );
 
 sub cached_get($$;@) {
@@ -130,19 +130,17 @@ sub do_sprintf_escape($) {
 }
 
 my %alias0 = (
-	-ppid	=> [ qw/stat ppid/ ],
-	-comm	=> [ qw/stat comm/ ],
-	-state	=> [ qw/stat state/ ],
+	"ppid"	=> [ qw/stat ppid/ ],
+	"comm"	=> [ qw/stat comm/ ],
+	"state"	=> [ qw/stat state/ ],
 );
 
 sub get_value_for_printf($$) {
 	my ($pid, $long_name) = @_;
 	my ($name, @args) = split /::/, $long_name;
-	$name = "-$name";
 	if( $alias0{$name} ) {
-		die "alias -$name takes no arguments\n" if @args;
+		die "alias $name takes no arguments\n" if @args;
 		my ($_name, @_args) = @{$alias0{$name}};
-		$_name = "-$_name";
 		return cached_get( $pid, $_name, @_args );
 	} elsif( @args > 1 ) {
 		...
@@ -180,23 +178,23 @@ sub func_signal($$) {
 }
 
 my %func0 = (
-	-true	=> sub { return $_[0] },
-	-false	=> sub { return [] },
-	-list	=> \&func_list,
-	-kill	=> sub { func_signal shift, "KILL" },
-	-term	=> sub { func_signal shift, "TERM" },
-	-hup	=> sub { func_signal shift, "HUP" },
+	"true"	=> sub { return $_[0] },
+	"false"	=> sub { return [] },
+	"list"	=> \&func_list,
+	"kill"	=> sub { func_signal shift, "KILL" },
+	"term"	=> sub { func_signal shift, "TERM" },
+	"hup"	=> sub { func_signal shift, "HUP" },
 );
 my %func1 = ( # see also %alias0
-	-exe	=> sub { find_by_prop( shift, shift, "-exe" ) },
-	-cwd	=> sub { find_by_prop( shift, shift, "-cwd" ) },
-	-root	=> sub { find_by_prop( shift, shift, "-root" ) },
-	-printf	=> \&func_printf,
-	-signal	=> \&func_signal,
+	"exe"		=> sub { find_by_prop( shift, shift, "exe" ) },
+	"cwd"		=> sub { find_by_prop( shift, shift, "cwd" ) },
+	"root"		=> sub { find_by_prop( shift, shift, "root" ) },
+	"printf"	=> \&func_printf,
+	"signal"	=> \&func_signal,
 );
 my %func2 = (
-	-status	=> sub { ... },
-	-stat	=> sub { find_by_prop( $_[0], $_[2], "-stat", $_[1] ) },
+	"status"	=> sub { ... },
+	"stat"		=> sub { find_by_prop( $_[0], $_[2], "stat", $_[1] ) },
 );
 
 sub tokenize(@) {
@@ -210,16 +208,17 @@ sub tokenize(@) {
 		} elsif( $a =~ /^-or?$/ ) {
 			push @out, [ 'OR', $a ];
 		} elsif( $a =~ /^-(\w+)$/ ) {
-			if( $func0{$a} ) {
-				push @out, [ 'FUNC', [ 'FUNC', $a ] ];
-			} elsif( $func1{$a} or $alias0{$a} ) {
-				@_ or die "function $a must have an arg\n";
-				push @out, [ 'FUNC', [ 'FUNC', $a, shift ] ];
-			} elsif( $func2{$a} ) {
-				@_ > 1 or die "function $a must have two args\n";
-				push @out, [ 'FUNC', [ 'FUNC', $a, shift, shift ] ];
+			my $name = $1;
+			if( $func0{$name} ) {
+				push @out, [ 'FUNC', [ 'FUNC', $name ] ];
+			} elsif( $func1{$name} or $alias0{$name} ) {
+				@_ or die "function $name must have an arg\n";
+				push @out, [ 'FUNC', [ 'FUNC', $name, shift ] ];
+			} elsif( $func2{$name} ) {
+				@_ > 1 or die "function $name must have two args\n";
+				push @out, [ 'FUNC', [ 'FUNC', $name, shift, shift ] ];
 			} else {
-				die "unknown function: $a\n";
+				die "unknown function: $name\n";
 			}
 		} else {
 			die "unknown token: $a\n";
@@ -294,7 +293,6 @@ sub evalfunc($$@) {
 	if( $alias0{$name} ) {
 		die "alias $name takes 1 arg\n" unless 1 == @args;
 		my ($_name, @_args) = ( @{$alias0{$name}}, @args );
-		$_name = "-$_name";
 		die unless 2 == @_args;
 		return $func2{$_name}->($list, @_args);
 	} elsif( $func0{$name} ) {
@@ -350,8 +348,8 @@ sub evaltree($$) {
 }
 
 my %is_action = map { $_ => 1 } qw(
-	-list -printf
-	-signal -kill -term -hup
+	list printf
+	signal kill term hup
 );
 sub tree_has_actions($);
 sub tree_has_actions($) {
