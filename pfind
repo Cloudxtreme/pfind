@@ -47,10 +47,28 @@ sub cached_get($$) {
 	}
 }
 
+my %pattern2re_cache;
+sub pattern2re($) {
+	my $pattern = shift;
+	my $re = $pattern2re_cache{$pattern};
+	unless( $re ) {
+		$re = $pattern;
+		$re =~ s/([\\^.$|\(\)\[\]\{\}\+])/\\$1/g;
+		$re =~ tr/?/./;
+		$re =~ s/\*/.*/g;
+		$re = "^$re\$";
+		$re = qr/$re/;
+		$pattern2re_cache{$pattern} = $re;
+	}
+	return $re;
+}
+
 sub find_by_prop($$$) {
-	my ($list, $re, $name) = @_;
+	my ($list, $pattern, $name) = @_;
 	$list = check_list $list;
-	return [ grep { cached_get($_, $name) =~ /$re/ } @$list ];
+	return [ grep {
+		cached_get($_, $name) =~ pattern2re($pattern)
+	} @$list ];
 }
 
 sub func_list($) {
@@ -302,7 +320,6 @@ __END__
 TODO:
 
 make cached_get work with func2 (-status)
-pattern_match() instead of ~= $re
 (maybe) //= "" in cached_get
 -use glob [ exp ] | -use perlre [ exp ] - WON'T, instead make globbing the default for functions and use "%a =~ re" for perlre
 (maybe) reduce [AND exp1 [AND exp2 exp3]] to [AND exp1 exp2 exp3] etc
