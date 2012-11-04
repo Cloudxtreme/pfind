@@ -10,12 +10,12 @@ like that of `find`. **It is not finished yet**, but stay tuned.
 
 	pfind -exe /bin/bash -or -exe /bin/csh
 
-	pfind -exe apache -and -cwd /var/www
+	pfind -exe /usr/sbin/apache -and -cwd '/var/www*'
 	# -and is optional, the following command line does the same thing:
-	pfind -exe apache -cwd /var/www
+	pfind -exe /usr/sbin/apache -cwd '/var/www*'
 	
 	# print something more than just a list of PIDs:
-	pfind [ -exe rm -or -cwd /etc ] -printf '%exe (pid=%pid) in %{cwd}\n'
+	pfind [ -exe /bin/rm -or -cwd /etc ] -printf '%exe (pid=%pid) in %{cwd}\n'
 
 ## NOT YET IMPLEMENTED EXAMPLES
 
