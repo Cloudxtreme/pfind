@@ -28,22 +28,55 @@ sub check_list($) {
 	}
 }
 
-my %getters0 = (
+sub get_stat($) {
+	my $pid = shift;
+	open STAT, "/proc/$pid/stat" or return undef;
+	my $line = <STAT>;
+	return undef unless defined $line;
+	close STAT or return undef;
+	$line =~ /^(\d+) \((.*)\) (\w) (\d+(\s+-?\d+)+)$/ or die "bad stat: $line";
+	my %out = ( pid => $1, comm => $2, state => $3 );
+	my @rest = split /\s+/, $4;
+	my @rest_names = qw(
+		ppid pgrp session tty_nr tpgid flags
+		minflt cminflt majflt cmajflt
+		utime stime cutime cstime
+		priority nice num_threads itrealvalue starttime
+		vsize rss rsslim startcode endcode startstack
+		kstkesp kstkeip signal blocked sigignore sigcatch
+		wchan nswap cnswap exit_signal processor
+		rt_priority policy delayacct_blkio_ticks guest_time cguest_time
+	);
+	while( @rest ) {
+		my $value = shift @rest;
+		last unless defined $value;
+		my $name = shift @rest_names;
+		$out{$name} = $value;
+	}
+	return \%out;
+}
+
+my %getters0 = ( # see also %alias0
 	-exe	=> sub { readlink("/proc/$_[0]/exe") // "" },
 	-cwd	=> sub { readlink("/proc/$_[0]/cwd") // "" },
 	-root	=> sub { readlink("/proc/$_[0]/root") // "" },
 );
+my %getters1 = (
+	-stat	=> \&get_stat,
+);
 
-sub cached_get($$) {
-	my ($pid, $name) = @_;
-	if( $name eq "-pid" ) {
-		return $pid;
-	} elsif( exists $state->{$pid}{$name} ) {
-		return $state->{$pid}{$name};
-	} elsif( exists $getters0{$name} ) {
-		return( $state->{$pid}{$name} = $getters0{$name}->($pid) );
+sub cached_get($$;@) {
+	my ($pid, $name, @args) = @_;
+	if( exists $getters0{$name} ) {
+		0 == @args or die "function $name takes no arguments\n";
+		return( $state->{$pid}{$name} //= $getters0{$name}->($pid) );
+	} elsif( exists $getters1{$name} ) {
+		1 == @args or die "function $name takes one argument\n";
+		my ($arg1) = @args;
+		$state->{$pid}{$name} //= $getters1{$name}->($pid);
+		return $state->{$pid}{$name}{$arg1};
 	} else {
-		die "unkown property: $name";
+		die "unknown function: $name";
 	}
 }
 
@@ -63,11 +96,11 @@ sub pattern2re($) {
 	return $re;
 }
 
-sub find_by_prop($$$) {
-	my ($list, $pattern, $name) = @_;
+sub find_by_prop($$$;@) {
+	my ($list, $pattern, $name, @args) = @_;
 	$list = check_list $list;
 	return [ grep {
-		cached_get($_, $name) =~ pattern2re($pattern)
+		cached_get($_, $name, @args) =~ pattern2re($pattern)
 	} @$list ];
 }
 
@@ -95,13 +128,29 @@ sub do_sprintf_escape($) {
 	return $sprintf_escapes{$char} // "\\$char";
 }
 
+my %alias0 = (
+	-ppid	=> [ qw/stat ppid/ ],
+	-comm	=> [ qw/stat comm/ ],
+	-state	=> [ qw/stat state/ ],
+);
+
 sub get_value_for_printf($$) {
-	my ($pid, $name) = @_;
-	my @names = split /::/, $name;
-	if( @names > 1 ) {
+	my ($pid, $long_name) = @_;
+	my ($name, @args) = split /::/, $long_name;
+	$name = "-$name";
+	if( $alias0{$name} ) {
+		die "alias -$name takes no arguments\n" if @args;
+		my ($_name, @_args) = @{$alias0{$name}};
+		$_name = "-$_name";
+		return cached_get( $pid, $_name, @_args );
+	} elsif( @args > 1 ) {
 		...
+	} elsif( 1 == @args ) {
+		return cached_get( $pid, $name, @args );
+	} elsif( 0 == @args ) {
+		return cached_get( $pid, $name );
 	} else {
-		return cached_get( $pid, "-$name" );
+		die;
 	}
 }
 
@@ -137,7 +186,7 @@ my %func0 = (
 	-term	=> sub { func_signal shift, "TERM" },
 	-hup	=> sub { func_signal shift, "HUP" },
 );
-my %func1 = (
+my %func1 = ( # see also %alias0
 	-exe	=> sub { find_by_prop( shift, shift, "-exe" ) },
 	-cwd	=> sub { find_by_prop( shift, shift, "-cwd" ) },
 	-root	=> sub { find_by_prop( shift, shift, "-root" ) },
@@ -146,6 +195,7 @@ my %func1 = (
 );
 my %func2 = (
 	-status	=> sub { ... },
+	-stat	=> sub { find_by_prop( $_[0], $_[2], "-stat", $_[1] ) },
 );
 
 sub tokenize(@) {
@@ -161,7 +211,7 @@ sub tokenize(@) {
 		} elsif( $a =~ /^-(\w+)$/ ) {
 			if( $func0{$a} ) {
 				push @out, [ 'FUNC', [ 'FUNC', $a ] ];
-			} elsif( $func1{$a} ) {
+			} elsif( $func1{$a} or $alias0{$a} ) {
 				@_ or die "function $a must have an arg\n";
 				push @out, [ 'FUNC', [ 'FUNC', $a, shift ] ];
 			} elsif( $func2{$a} ) {
@@ -238,7 +288,13 @@ sub mktree(@) {
 
 sub evalfunc($$@) {
 	my ($list, $name, @args) = @_;
-	if( $func0{$name} ) {
+	if( $alias0{$name} ) {
+		die "alias $name takes 1 arg\n" unless 1 == @args;
+		my ($_name, @_args) = ( @{$alias0{$name}}, @args );
+		$_name = "-$_name";
+		die unless 2 == @_args;
+		return $func2{$_name}->($list, @_args);
+	} elsif( $func0{$name} ) {
 		die "function $name takes no args\n" if @args;
 		return $func0{$name}->($list);
 	} elsif( $func1{$name} ) {
