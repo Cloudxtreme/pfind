@@ -386,35 +386,39 @@ main;
 
 __END__
 
+TODO before v0.1:
+
+-pidfile /var/run/apache.pid (think what happens if the pid is not in the pid list passed into the pidfile getter)
+-parents/-children/-descendants/-ancestors: pfind [ -pidfile /var/run/apache.pid -or -descendants ] -kill
+-exec cmd {} +/';'
+-ps u = -exec ps u {} +, -ps j, -ps jf
+-status (alias -veid = -status envID)
+compare "-stat state" with "-status State", maybe fix some other duplicates
+(maybe) //= "" in cached_get
+-not (aka !)
+func2 -status
+-pidlist 1 243 435 345 ';'
+better -or semantics, just like it's done for -and (do not run second check for processes which are already checked by the first arg)
+
 TODO:
 
-make cached_get work with func2 (-status)
-(maybe) //= "" in cached_get
 (maybe) reduce [AND exp1 [AND exp2 exp3]] to [AND exp1 exp2 exp3] etc
 -xor (don't ask me why)
--not (aka !)
 %uptime -lt 50
 -kernel-thread/-userspace (use VmSize in /status or PF_KTHREAD flag in /stat)
 threads
--exec cmd {} +/';'
 common description of shorthands for both getters (-title = -status title) and print directives (%title = %status::title)
-func2 -status
 remove check_list (just use get_full_proc_list() instead of "all")
 check that printf works with %status::title (when it's done)
 check what happens if we run printf on non-existent pids
--pidlist 1 243 435 345 ';'
 FIXME: \x?? may produce % which will be used later in printf (not a bug?)
 implement all ...
 help, README.md and POD
--ps-u = -exec ps u {} +, -ps-j, -ps-jf
 -ok (interactive -exec, but find a better name), probably -interactive modifier for all actions; maybe allow custom prompt strings;
 	or just use pfind ... -confirm "kill %pid %exe" (-a) -kill/-exec ...
 -opened, -reads, -writes, -locks
--pidfile /var/run/apache (think what happens if the pid is not in the pid list passed into the pidfile getter)
 printf: %{func2{arbitrary arg with spaces and slashes}} (not really needed yet since -pidfile is not for printf)
--sprintf (should be allowed everywhere where simple string arg is allowed)
-better -or semantics, just like it's done for -and (do not run second check for processes which are already checked by the first arg)
-global vars: %::prefix := "some string" -printf "%::prefix %pid\n"; maybe find something better than %::a;
+per-process AND global vars: %::prefix := "some string" -printf "%::prefix %pid\n"; find something better than %::a;
 	also we need something like %::uptime (preset readonly global vars)
 think about pfind exit status and its usage in scripts
 (maybe) parse functions in parser, not just in tokenizer
@@ -427,7 +431,12 @@ all strings must be formatted by default, so there's no need for -sprintf; use -
 (maybe) some network checks
 -fprintf
 (maybe) something like -interactive [ -hup ] and -sort %pid [ ... ] in grammar instead of using -and and -or
--parents/-children/-descendants/-ancestors: pfind [ -pidfile /var/run/apache.pid -or -descendants ] -kill
+%exec{ps -o smth %pid}
+smart tab (and header) for printf: -printf '%header{VEID}%status::envID %t%pid %t%cmdline' ('%t%pid' = '%header{PID}%pid')
+-user/-group/-uid/-gid and %user etc
+%human{%vsz}
+%{%vsz-%rss}
+
 
 WONT:
 -use glob [ exp ] | -use perlre [ exp ] - WON'T, instead make globbing the default for functions and use "%a =~ re" for perlre
@@ -435,4 +444,5 @@ WONT:
 -print: this is called -list
 -print0: no real need for this (there's no special characters in PIDs), you can use -printf '%pid\0' if absolutely necessary
 -exists = -signal 0 (-exists is not an action)
+-sprintf (should be allowed everywhere where simple string arg is allowed)
 
