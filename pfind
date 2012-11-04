@@ -123,16 +123,26 @@ sub func_printf($) {
 	return $list;
 }
 
+sub func_signal($$) {
+	my ($list, $signal) = @_;
+	$signal = uc $signal;
+	return [ grep { kill $signal, $_ } @$list ];
+}
+
 my %func0 = (
 	-true	=> sub { return $_[0] },
 	-false	=> sub { return [] },
 	-list	=> \&func_list,
+	-kill	=> sub { func_signal shift, "KILL" },
+	-term	=> sub { func_signal shift, "TERM" },
+	-hup	=> sub { func_signal shift, "HUP" },
 );
 my %func1 = (
 	-exe	=> sub { find_by_prop( shift, shift, "-exe" ) },
 	-cwd	=> sub { find_by_prop( shift, shift, "-cwd" ) },
 	-root	=> sub { find_by_prop( shift, shift, "-root" ) },
 	-printf	=> \&func_printf,
+	-signal	=> \&func_signal,
 );
 my %func2 = (
 	-status	=> sub { ... },
@@ -280,8 +290,10 @@ sub evaltree($$) {
 	}
 }
 
-my %is_action;
-$is_action{$_} = 1 foreach qw/-list -printf/;
+my %is_action = map { $_ => 1 } qw(
+	-list -printf
+	-signal -kill -term -hup
+);
 sub tree_has_actions($);
 sub tree_has_actions($) {
 	my $tree = shift;
@@ -340,7 +352,6 @@ help, README.md and POD
 -ps-u = -exec ps u {} +, -ps-j, -ps-jf
 -ok (interactive -exec, but find a better name), probably -interactive modifier for all actions; maybe allow custom prompt strings;
 	or just use pfind ... -confirm "kill %pid %exe" (-a) -kill/-exec ...
--signal, -kill = -signal hup, -term = -signal term, -hup = -signal hup, -exists = -signal 0 (-exists is not an action)
 -opened, -reads, -writes, -locks
 -pidfile /var/run/apache (think what happens if the pid is not in the pid list passed into the pidfile getter)
 printf: %{func2{arbitrary arg with spaces and slashes}} (not really needed yet since -pidfile is not for printf)
@@ -366,4 +377,5 @@ WONT:
 (won't) compile formatted strings into subs
 -print: this is called -list
 -print0: no real need for this (there's no special characters in PIDs), you can use -printf '%pid\0' if absolutely necessary
+-exists = -signal 0 (-exists is not an action)
 
