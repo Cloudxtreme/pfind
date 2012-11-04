@@ -23,6 +23,10 @@ like that of `find`. **It is not finished yet**, but stay tuned.
 	# but only if it is really /usr/bin/apache:
 	pfind -pidfile /var/run/apache.pid -exe /usr/sbin/apache -hup
 
+	# kill the whole process tree:
+	pfind [ -pidfile /var/run/apache.pid -exe /usr/sbin/apache \
+		-or -descendants ] -kill
+
 	# "+" is to run `ps` command with all pids, not one by one:
 	pfind -user mike -exec ps j {} +		
 

@@ -321,11 +321,9 @@ TODO:
 
 make cached_get work with func2 (-status)
 (maybe) //= "" in cached_get
--use glob [ exp ] | -use perlre [ exp ] - WON'T, instead make globbing the default for functions and use "%a =~ re" for perlre
 (maybe) reduce [AND exp1 [AND exp2 exp3]] to [AND exp1 exp2 exp3] etc
 -xor (don't ask me why)
 -not (aka !)
--print/-printf/-print0 / -fprint
 %uptime -lt 50
 -kernel-thread/-userspace (use VmSize in /status or PF_KTHREAD flag in /stat)
 threads
@@ -340,10 +338,10 @@ FIXME: \x?? may produce % which will be used later in printf (not a bug?)
 implement all ...
 help, README.md and POD
 -ps-u = -exec ps u {} +, -ps-j, -ps-jf
--ok (interactive -exec, but find a better name), probably -interactive modifier for all actions; maybe allow custom prompt strings
+-ok (interactive -exec, but find a better name), probably -interactive modifier for all actions; maybe allow custom prompt strings;
+	or just use pfind ... -confirm "kill %pid %exe" (-a) -kill/-exec ...
 -signal, -kill = -signal hup, -term = -signal term, -hup = -signal hup, -exists = -signal 0 (-exists is not an action)
 -opened, -reads, -writes, -locks
--sort asc/desc (and remove sorts in -list and -printf)
 -pidfile /var/run/apache (think what happens if the pid is not in the pid list passed into the pidfile getter)
 printf: %{func2{arbitrary arg with spaces and slashes}} (not really needed yet since -pidfile is not for printf)
 -sprintf (should be allowed everywhere where simple string arg is allowed)
@@ -353,10 +351,19 @@ global vars: %::prefix := "some string" -printf "%::prefix %pid\n"; maybe find s
 think about pfind exit status and its usage in scripts
 (maybe) parse functions in parser, not just in tokenizer
 see "ps -o" for more printf directives
-(won't) compile formatted strings into subs
 do not add to many functions, prefer things like %exe -m '*bash', %cwd =~ '^a', %runtime -lt %{interval{5days}}, %vsz -gt %{size{5m}} etc
 -!m shorthand: "%exe -!m '*bash'" is "-not %exe -m '*bash'" (this seems to be the only useful case for such shorthand)
 -lt/-gt/-eq/-ne for numeric comparison, ==/!= for strings, =~/!~ for perlre, := for assignment, = is never used
-if string is started with % it is formatted (or a variable right before := operator), else it is quoted (not formatted);
-	-sprintf <string> is always formatted, -quote <string> is always quoted
+all strings must be formatted by default, so there's no need for -sprintf; use -quote <string> if you need to skip formatting
+-sort %pid/%vsz etc (and remove sorts in -list and -printf); use -sort -%var if you need descending sort
 (maybe) some network checks
+-fprintf
+(maybe) something like -interactive [ -hup ] and -sort %pid [ ... ] in grammar instead of using -and and -or
+-parents/-children/-descendants/-ancestors: pfind [ -pidfile /var/run/apache.pid -or -descendants ] -kill
+
+WONT:
+-use glob [ exp ] | -use perlre [ exp ] - WON'T, instead make globbing the default for functions and use "%a =~ re" for perlre
+(won't) compile formatted strings into subs
+-print: this is called -list
+-print0: no real need for this (there's no special characters in PIDs), you can use -printf '%pid\0' if absolutely necessary
+
