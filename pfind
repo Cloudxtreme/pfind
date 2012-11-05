@@ -203,7 +203,7 @@ sub tokenize(@) {
 		my $a = shift;
 		if( $a =~ /^[\(\)\[\]\{\},]$/ ) { # parentheses and comma
 			push @out, [ $a, $a ];
-		} elsif( $a =~ /^-a(nd?)$/ ) {
+		} elsif( $a =~ /^-a(nd)?$/ ) {
 			push @out, [ 'AND', $a ];
 		} elsif( $a =~ /^-or?$/ ) {
 			push @out, [ 'OR', $a ];
