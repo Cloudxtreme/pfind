@@ -1,6 +1,5 @@
 TODO before v0.1:
 
--pidfile /var/run/apache.pid (think what happens if the pid is not in the pid list passed into the pidfile getter)
 -status (alias -veid = -status envID)
 compare "-stat state" with "-status State", maybe fix some other duplicates
 (maybe) //= "" in cached_get

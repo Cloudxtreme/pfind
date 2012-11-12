@@ -269,6 +269,19 @@ sub func_exec($$@) {
 	}
 }
 
+sub func_pidfile($$) {
+	my ($checklist, $pidfile) = @_;
+	open PIDFILE, "<", $pidfile or return [];
+	my $pid = <PIDFILE>;
+	return [] unless defined $pid;
+	close PIDFILE or return [];
+	chomp $pid;
+	$pid =~ /^\d+$/ or return [];
+	my %ok = map { $_ => 1 } @$checklist;
+	$ok{$pid} or return [];
+	return [ $pid ];
+}
+
 my %func0 = (
 	"true"	=> sub { return $_[0] },
 	"false"	=> sub { return [] },
@@ -288,6 +301,7 @@ my %func1 = ( # see also %alias0
 	"printf"	=> \&func_printf,
 	"signal"	=> \&func_signal,
 	"ps"		=> sub { func_exec( shift, '+', 'ps', shift, '{}' ) },
+	"pidfile"	=> \&func_pidfile,
 );
 my %func2 = (
 	"status"	=> sub { ... },

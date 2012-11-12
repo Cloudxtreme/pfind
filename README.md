@@ -17,8 +17,6 @@ like that of `find`. **It is not finished yet**, but stay tuned.
 	# print something more than just a list of PIDs:
 	pfind [ -exe /bin/rm -or -cwd /etc ] -printf '%exe (pid=%pid) in %{cwd}\n'
 
-## NOT YET IMPLEMENTED EXAMPLES
-
 	# send SIGHUP to process with pid in /var/run/apache.pid,
 	# but only if it is really /usr/bin/apache:
 	pfind -pidfile /var/run/apache.pid -exe /usr/sbin/apache -hup
@@ -26,6 +24,8 @@ like that of `find`. **It is not finished yet**, but stay tuned.
 	# kill the whole process tree:
 	pfind [ -pidfile /var/run/apache.pid -exe /usr/sbin/apache \
 		-or -descendants ] -kill
+
+## NOT YET IMPLEMENTED EXAMPLES
 
 	# "+" is to run `ps` command with all pids, not one by one:
 	pfind -user mike -exec ps j {} +		
