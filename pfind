@@ -227,6 +227,14 @@ sub inc_parent($$) {
 	return @addition;
 }
 
+sub func_pids($$@) {
+	my ($checklist, $marker, @pids) = @_;
+	die "-pids takes only ';' end marker\n" unless $marker eq ';';
+	die "-pids takes at least one argument\n" unless @pids;
+	my %ok = map { $_ => 1 } @$checklist;
+	return [ grep { $ok{$_} } @pids ];
+}
+
 my %func0 = (
 	"true"	=> sub { return $_[0] },
 	"false"	=> sub { return [] },
@@ -250,6 +258,9 @@ my %func2 = (
 	"status"	=> sub { ... },
 	"stat"		=> sub { find_by_prop( $_[0], $_[2], "stat", $_[1] ) },
 );
+my %funcm = (
+	"pids"		=> \&func_pids,
+);
 
 sub tokenize(@) {
 	my @out = ();
@@ -271,6 +282,22 @@ sub tokenize(@) {
 			} elsif( $func2{$name} ) {
 				@_ > 1 or die "function $name must have two args\n";
 				push @out, [ 'FUNC', [ 'FUNC', $name, shift, shift ] ];
+			} elsif( $funcm{$name} ) {
+				my $marker = undef;
+				my @args = ();
+				while( @_ ) {
+					my $next = shift;
+					if( $next =~ /^[;\+]$/ ) { # '+' or ';'
+						$marker = $next;
+						last;
+					} else {
+						push @args, $next;
+					}
+				}
+				die "$a arguments end marker not found\n"
+					unless defined $marker;
+				push @out, [ 'FUNC',
+					[ 'FUNC', $name, $marker, @args ] ];
 			} else {
 				die "unknown function: $name\n";
 			}
@@ -360,6 +387,8 @@ sub evalfunc($$@) {
 		die "function $name takes 2 args\n" unless 2 == @args;
 		my ($arg1, $arg2) = (@args);
 		return $func2{$name}->($list, $arg1, $arg2);
+	} elsif( $funcm{$name} ) {
+		return $funcm{$name}->($list, @args);
 	} else {
 		die "unknown function: $name\n";
 	}
