@@ -303,7 +303,7 @@ comma_exp:
 	;
 or_exp:
 	and_exp
-	| and_exp OR or_exp	{ [ 'OR', $_[1], $_[3] ] }
+	| or_exp OR and_exp	{ [ 'OR', $_[1], $_[3] ] }
 	;
 and_exp:
 	atom
@@ -318,9 +318,9 @@ atom:
 	| block
 	;
 block:
-	'(' exp ')'		{ $_[2] }
-	| '{' exp '}'		{ $_[2] }
-	| '[' exp ']'		{ $_[2] }
+	'(' exp ')'		{ [ 'BLOCK', $_[2] ] }
+	| '{' exp '}'		{ [ 'BLOCK', $_[2] ] }
+	| '[' exp ']'		{ [ 'BLOCK', $_[2] ] }
 	;
 %%
 GRAMMAR
@@ -386,7 +386,11 @@ sub evaltree($$) {
 	'ARRAY' eq ref $tree_ref or die;
 	my (@tree) = (@$tree_ref); # make a copy
 	my $op = shift @tree;
-	if( $op eq 'COMMA' ) {
+	if( $op eq 'BLOCK' ) {
+		local $after_OR = undef; # this is why BLOCK is needed
+		1 == @tree or die "$op takes one arg\n";
+		return evaltree( $list, $tree[0] );
+	} elsif( $op eq 'COMMA' ) {
 		local $after_OR = undef;
 		@tree > 1 or die "$op takes at least two args\n";
 		my $out;
@@ -441,7 +445,7 @@ sub tree_has_actions($) {
 	my $tree = shift;
 	my @copy = @$tree;
 	my $op = shift @copy;;
-	if( $op =~ /^(COMMA|OR|AND)$/ ) {
+	if( $op =~ /^(BLOCK|COMMA|OR|AND)$/ ) {
 		foreach my $subtree (@copy) {
 			return 1 if tree_has_actions($subtree);
 		}
