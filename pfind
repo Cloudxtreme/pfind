@@ -287,6 +287,7 @@ my %func1 = ( # see also %alias0
 	"root"		=> sub { find_by_prop( shift, shift, "root" ) },
 	"printf"	=> \&func_printf,
 	"signal"	=> \&func_signal,
+	"ps"		=> sub { func_exec( shift, '+', 'ps', shift, '{}' ) },
 );
 my %func2 = (
 	"status"	=> sub { ... },
@@ -503,7 +504,7 @@ sub evaltree($$) {
 my %is_action = map { $_ => 1 } qw(
 	list printf
 	signal kill term hup
-	exec
+	exec ps
 );
 sub tree_has_actions($);
 sub tree_has_actions($) {
