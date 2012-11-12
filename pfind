@@ -235,6 +235,40 @@ sub func_pids($$@) {
 	return [ grep { $ok{$_} } @pids ];
 }
 
+sub func_exec($$@) {
+	my ($checklist, $marker, @args) = @_;
+	die "-exec takes at least two arguments\n" unless @args;
+	my $ok = undef;
+	foreach( @args ) {
+		$ok = 1 if $_ eq '{}';
+	}
+	die "-exec expects at least one '{}' argument\n" unless $ok;
+	if( $marker eq '+' ) {
+		my @cmdline = ();
+		foreach( @args ) {
+			if( $_ eq '{}' ) {
+				push @cmdline, @$checklist;
+			} else {
+				push @cmdline, $_;
+			}
+		}
+		system( @cmdline );
+		return $checklist;
+	} elsif( $marker eq ';' ) {
+		my @out = ();
+		foreach my $pid ( @$checklist ) {
+			my @cmdline = map {
+				/^\{\}$/ ? $pid : $_
+			} @args;
+			system( @cmdline );
+			push @out, $pid unless $? >> 8;
+		}
+		return [ @out ];
+	} else {
+		die;
+	}
+}
+
 my %func0 = (
 	"true"	=> sub { return $_[0] },
 	"false"	=> sub { return [] },
@@ -260,6 +294,7 @@ my %func2 = (
 );
 my %funcm = (
 	"pids"		=> \&func_pids,
+	"exec"		=> \&func_exec,
 );
 
 sub tokenize(@) {
@@ -468,6 +503,7 @@ sub evaltree($$) {
 my %is_action = map { $_ => 1 } qw(
 	list printf
 	signal kill term hup
+	exec
 );
 sub tree_has_actions($);
 sub tree_has_actions($) {
