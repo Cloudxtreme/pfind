@@ -2,6 +2,10 @@
 use strict;
 use Parse::Yapp;
 my $state;
+# a copy of previous expression's result
+# for things like -children/-parents/-descendants/-ancestors:
+my $previous_list;
+our $after_OR = undef;
 
 sub get_full_proc_list() {
 	return $state->{"all"} if exists $state->{"all"};
@@ -177,6 +181,52 @@ sub func_signal($$) {
 	return [ grep { kill $signal, $_ } @$list ];
 }
 
+sub func_additions($$$$) {
+	my ($checklist, $name, $inc, $once) = @_;
+	$after_OR or die "-$name must come after -or\n";
+	my @out = ();
+	my %previous = map { $_ => 1 } @$previous_list;
+	my %left2check = map { $_ => 1 } @$checklist;
+	delete $left2check{$_} foreach keys %previous;
+	while( %previous and %left2check ) {
+		# $inc MUST NOT change its arguments
+		my @addition = $inc->( \%previous, \%left2check );
+		last unless @addition;
+		foreach my $pid ( @addition ) {
+			next if $previous{$pid};
+			die $pid unless $left2check{$pid};
+			push @out, $pid;
+			$previous{$pid} = 1;
+			delete $left2check{$pid};
+		}
+		last if $once;
+	}
+	return [ @out ];
+}
+
+sub inc_children($$) {
+	my ($previous, $left2check) = @_;
+	my @addition;
+	foreach my $pid ( keys %$left2check ) {
+		my $ppid = cached_get( $pid, "stat", "ppid" );
+		if( $previous->{$ppid} ) {
+			push @addition, $pid;
+		}
+	}
+	return @addition;
+}
+sub inc_parent($$) {
+	my ($previous, $left2check) = @_;
+	my @addition;
+	foreach my $pid ( keys %$previous ) {
+		my $ppid = cached_get( $pid, "stat", "ppid" );
+		if( $left2check->{$ppid} ) {
+			push @addition, $ppid;
+		}
+	}
+	return @addition;
+}
+
 my %func0 = (
 	"true"	=> sub { return $_[0] },
 	"false"	=> sub { return [] },
@@ -184,6 +234,10 @@ my %func0 = (
 	"kill"	=> sub { func_signal shift, "KILL" },
 	"term"	=> sub { func_signal shift, "TERM" },
 	"hup"	=> sub { func_signal shift, "HUP" },
+	"children"	=> sub { func_additions( shift, "children", \&inc_children, 1 ) },
+	"descendants"	=> sub { func_additions shift, "descendants", \&inc_children, undef },
+	"parents"	=> sub { func_additions( shift, "parents", \&inc_parent, 1 ) },
+	"ancestors"	=> sub { func_additions shift, "ancestors", \&inc_parent, undef },
 );
 my %func1 = ( # see also %alias0
 	"exe"		=> sub { find_by_prop( shift, shift, "exe" ) },
@@ -333,33 +387,46 @@ sub evaltree($$) {
 	my (@tree) = (@$tree_ref); # make a copy
 	my $op = shift @tree;
 	if( $op eq 'COMMA' ) {
+		local $after_OR = undef;
 		@tree > 1 or die "$op takes at least two args\n";
 		my $out;
-		$out = evaltree( $list, $_ ) foreach @tree;
+		foreach( @tree ) {
+			$out = evaltree( $list, $_ );
+			$previous_list = $out;
+		}
 		return $out;
 	} elsif( $op eq 'OR' ) {
 		@tree > 1 or die "$op takes at least two args\n";
 		my $list2check = [ @$list ];
 		my $list_result = [];
+		my $first_arg = 1;
 		foreach (@tree) {
+			local $after_OR = not $first_arg;
 			last unless @$list2check;
 			my $out = evaltree( $list2check, $_ );
 			$list2check = lists_substract( $list2check, $out );
 			$list_result = lists_add( $list_result, $out );
+			$previous_list = $list_result;
+			$first_arg = undef;
 		}
 		return $list_result;
 	} elsif( $op eq 'AND' ) {
+		local $after_OR = undef;
 		@tree > 1 or die "$op takes at least two args\n";
 		$list = check_list $list;
 		foreach (@tree) {
 			last unless @$list;
 			$list = evaltree( $list, $_ );
+			$previous_list = $list;
 		}
 		return $list;
 	} elsif( $op eq 'FUNC' ) {
+		# $after_OR is not changed here
 		@tree or die "no function name\n";
 		my $name = shift @tree;
-		return evalfunc( $list, $name, @tree );
+		$list = evalfunc( $list, $name, @tree );
+		$previous_list = $list;
+		return $list;
 	} else {
 		die "unknown op: $op\n";
 	}
@@ -407,7 +474,6 @@ __END__
 TODO before v0.1:
 
 -pidfile /var/run/apache.pid (think what happens if the pid is not in the pid list passed into the pidfile getter)
--parents/-children/-descendants/-ancestors: pfind [ -pidfile /var/run/apache.pid -or -descendants ] -kill
 -exec cmd {} +/';'
 -ps u = -exec ps u {} +, -ps j, -ps jf
 -status (alias -veid = -status envID)
