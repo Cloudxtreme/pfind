@@ -319,6 +319,8 @@ sub tokenize(@) {
 		my $a = shift;
 		if( $a =~ /^[\(\)\[\]\{\},]$/ ) { # parentheses and comma
 			push @out, [ $a, $a ];
+		} elsif( $a eq "!" or $a eq "-not" ) {
+			push @out, [ 'NOT', $a ];
 		} elsif( $a =~ /^-a(nd)?$/ ) {
 			push @out, [ 'AND', $a ];
 		} elsif( $a =~ /^-or?$/ ) {
@@ -384,12 +386,16 @@ or_exp:
 	| or_exp OR and_exp	{ [ 'OR', $_[1], $_[3] ] }
 	;
 and_exp:
-	atom
-	| atom and and_exp	{ [ 'AND', $_[1], $_[3] ] }
+	not_exp
+	| not_exp and and_exp	{ [ 'AND', $_[1], $_[3] ] }
 	;
 and:
 	#empty
 	| AND # -a | -and
+	;
+not_exp:
+	atom
+	| NOT not_exp		{ [ 'NOT', $_[2] ] }
 	;
 atom:
 	FUNC
@@ -462,14 +468,19 @@ sub lists_add($$) {
 
 sub evaltree($$);
 sub evaltree($$) {
-	my ($list, $tree_ref) = @_;
+	my ($list_ref, $tree_ref) = @_;
 	'ARRAY' eq ref $tree_ref or die;
-	my (@tree) = (@$tree_ref); # make a copy
+	my $list = [ @$list_ref ]; my (@tree) = (@$tree_ref); # make copies
 	my $op = shift @tree;
 	if( $op eq 'BLOCK' ) {
 		local $after_OR = undef; # this is why BLOCK is needed
 		1 == @tree or die "$op takes one arg\n";
 		return evaltree( $list, $tree[0] );
+	} elsif( $op eq 'NOT' ) {
+		local $after_OR = undef;
+		1 == @tree or die "$op takes one arg\n";
+		my $exp_result = evaltree( $list, $tree[0] );
+		return lists_substract( $list, $exp_result );
 	} elsif( $op eq 'COMMA' ) {
 		local $after_OR = undef;
 		@tree > 1 or die "$op takes at least two args\n";
@@ -526,7 +537,7 @@ sub tree_has_actions($) {
 	my $tree = shift;
 	my @copy = @$tree;
 	my $op = shift @copy;;
-	if( $op =~ /^(BLOCK|COMMA|OR|AND)$/ ) {
+	if( $op =~ /^(BLOCK|NOT|COMMA|OR|AND)$/ ) {
 		foreach my $subtree (@copy) {
 			return 1 if tree_has_actions($subtree);
 		}
