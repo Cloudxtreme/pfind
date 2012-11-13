@@ -158,21 +158,36 @@ sub get_value_for_printf($$) {
 	}
 }
 
+sub process_arg($$$) {
+	my ($list, $arg, $sprintf_needed) = @_;
+	if( not $sprintf_needed ) {
+		if( ref $arg ) {
+			... # -quote
+		} else {
+			return $arg;
+		}
+	} elsif( ref $arg ) {
+		... # -quote
+	} else {
+		$arg =~ s{\\(.)}{do_sprintf_escape($1)}ge;
+		$arg =~ s{\\x([01-9a-f][01-9a-f])}{chr hex $1}gie;
+		my $out = {};
+		foreach my $pid (@$list) {
+			my $formatted = $arg;
+			$formatted =~ s{%([a-z]\w*(::[a-z]\w*)*)}{get_value_for_printf( $pid, $1 )}gie;
+			$formatted =~ s{%\[([a-z]\w*(::[a-z]\w*)*)\]}{get_value_for_printf( $pid, $1 )}gie;
+			$formatted =~ s{%\{([a-z]\w*(::[a-z]\w*)*)\}}{get_value_for_printf( $pid, $1 )}gie;
+			$formatted =~ s{%\(([a-z]\w*(::[a-z]\w*)*)\)}{get_value_for_printf( $pid, $1 )}gie;
+			$out->{$pid} = $formatted;
+		}
+		return $out;
+	}
+}
+
 sub func_printf($$) {
 	my ($list, $format) = @_;
-	my @sorted = sort { $a <=> $b } @$list;
-	my $out = "";
-	foreach my $pid (@sorted) {
-		my $add = $format;
-		$add =~ s{\\(.)}{do_sprintf_escape($1)}ge;
-		$add =~ s{\\x([01-9a-f][01-9a-f])}{chr hex $1}gie;
-		$add =~ s{%([a-z]\w*(::[a-z]\w*)*)}{get_value_for_printf( $pid, $1 )}gie;
-		$add =~ s{%\[([a-z]\w*(::[a-z]\w*)*)\]}{get_value_for_printf( $pid, $1 )}gie;
-		$add =~ s{%\{([a-z]\w*(::[a-z]\w*)*)\}}{get_value_for_printf( $pid, $1 )}gie;
-		$add =~ s{%\(([a-z]\w*(::[a-z]\w*)*)\)}{get_value_for_printf( $pid, $1 )}gie;
-		$out .= $add;
-	}
-	print $out;
+	my $out = process_arg( $list, $format, 1 );
+	print join "", map { $out->{$_} } sort { $a <=> $b } @$list;
 	return $list;
 }
 
