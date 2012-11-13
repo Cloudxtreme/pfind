@@ -26,7 +26,6 @@ help, README.md and POD
 printf: %{func2{arbitrary arg with spaces and slashes}} (not really needed yet since -pidfile is not for printf)
 per-process AND global vars: %::prefix := "some string" -printf "%::prefix %pid\n"; find something better than %::a;
 	also we need something like %::uptime (preset readonly global vars)
-think about pfind exit status and its usage in scripts
 (maybe) parse functions in parser, not just in tokenizer
 see "ps -o" for more printf directives
 do not add to many functions, prefer things like %exe -m '*bash', %cwd =~ '^a', %runtime -lt %{interval{5days}}, %vsz -gt %{size{5m}} etc

@@ -572,6 +572,7 @@ sub main() {
 	my $value = evaltree( get_full_proc_list(), $tree );
 	#use Data::Dumper; print "value: ", Dumper $value; ##############################
 	func_list($value) if $do_print_list;
+	exit( @$value ? 0 : 1 );
 }
 
 main;
