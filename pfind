@@ -1,4 +1,5 @@
 #!/usr/bin/perl -w
+# (c) 2012 Sergey Redin sergey@redin.info https://github.com/spiculator/pfind
 use strict;
 use Parse::Yapp;
 my $state;
