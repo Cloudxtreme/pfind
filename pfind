@@ -160,15 +160,23 @@ sub get_value_for_printf($$) {
 
 sub process_arg($$$) {
 	my ($list, $arg, $sprintf_needed) = @_;
+	my $quoted;
+	if( ref $arg ) {
+		'ARRAY' eq ref $arg or die;
+		'QUOTE' eq $arg->[0] or die;
+		2 == @$arg or die;
+		$quoted = 1;
+		$arg = $arg->[1];
+	}
+	# here $arg MUST be scalar, plus we have $quoted flag
+	die $arg unless defined $arg and not ref $arg;
+	# we return hashref (when sprintf_needed) or scalar (else)
 	if( not $sprintf_needed ) {
-		if( ref $arg ) {
-			... # -quote
-		} else {
-			return $arg;
-		}
-	} elsif( ref $arg ) {
-		... # -quote
-	} else {
+		return $arg;
+	} elsif( $quoted ) {
+		my %out = map { $_ => $arg } @$list;
+		return \%out;
+	} else { # $sprintf_needed and not $quoted
 		$arg =~ s{\\(.)}{do_sprintf_escape($1)}ge;
 		$arg =~ s{\\x([01-9a-f][01-9a-f])}{chr hex $1}gie;
 		my $out = {};
@@ -328,10 +336,34 @@ my %funcm = (
 	"exec"		=> \&func_exec,
 );
 
+sub get_args($$$) {
+	my ($cmdline, $funcname, $argnum) = @_;
+	# argnum=0 for funcm (-pids/-exec) which ends with ';' or '+'
+	$argnum =~ /^\d+$/ or die;
+	my @args = ();
+	for( my $i = 1; $i <= $argnum or not $argnum; $i++ ) {
+		@$cmdline or die "cannot get argument $i for $funcname\n";
+		my $step1 = shift @$cmdline;
+		if( not $argnum and $step1 =~ /^[;\+]$/ ) {
+			unshift @args, $step1; # the end marker goes first
+			last;
+		} elsif( $step1 eq "-quote" ) {
+			@$cmdline or die "cannot get quoted argument $i for $funcname\n";
+			push @args, [ 'QUOTE', shift @$cmdline ];
+		} else {
+			die $step1 unless defined $step1
+				and not ref $step1 and length $step1;
+			push @args, $step1;
+		}
+	}
+	return @args;
+}
+
 sub tokenize(@) {
+	my @cmdline = @_;
 	my @out = ();
-	while(@_) {
-		my $a = shift;
+	while(@cmdline) {
+		my $a = shift @cmdline;
 		if( $a =~ /^[\(\)\[\]\{\},]$/ ) { # parentheses and comma
 			push @out, [ $a, $a ];
 		} elsif( $a eq "!" or $a eq "-not" ) {
@@ -345,27 +377,14 @@ sub tokenize(@) {
 			if( $func0{$name} ) {
 				push @out, [ 'FUNC', [ 'FUNC', $name ] ];
 			} elsif( $func1{$name} or $alias0{$name} ) {
-				@_ or die "function $name must have an arg\n";
-				push @out, [ 'FUNC', [ 'FUNC', $name, shift ] ];
+				push @out, [ 'FUNC', [ 'FUNC', $name,
+					get_args(\@cmdline, $a, 1) ] ];
 			} elsif( $func2{$name} ) {
-				@_ > 1 or die "function $name must have two args\n";
-				push @out, [ 'FUNC', [ 'FUNC', $name, shift, shift ] ];
+				push @out, [ 'FUNC', [ 'FUNC', $name,
+					get_args(\@cmdline, $a, 2) ] ];
 			} elsif( $funcm{$name} ) {
-				my $marker = undef;
-				my @args = ();
-				while( @_ ) {
-					my $next = shift;
-					if( $next =~ /^[;\+]$/ ) { # '+' or ';'
-						$marker = $next;
-						last;
-					} else {
-						push @args, $next;
-					}
-				}
-				die "$a arguments end marker not found\n"
-					unless defined $marker;
-				push @out, [ 'FUNC',
-					[ 'FUNC', $name, $marker, @args ] ];
+				push @out, [ 'FUNC', [ 'FUNC', $name,
+					get_args(\@cmdline, $a, 0) ] ];
 			} else {
 				die "unknown function: $name\n";
 			}
