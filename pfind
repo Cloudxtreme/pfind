@@ -339,6 +339,7 @@ my %func1 = ( # see also %alias0
 	"printf"	=> \&func_printf,
 	"signal"	=> \&func_signal,
 	"ps"		=> sub { func_exec( shift, '+', 'ps', shift, '{}' ) },
+	"pso"		=> sub { func_exec( shift, '+', 'ps', '-o', shift, '{}' ) },
 	"pidfile"	=> \&func_pidfile,
 );
 my %func2 = (
@@ -578,7 +579,7 @@ sub evaltree($$) {
 my %is_action = map { $_ => 1 } qw(
 	list printf
 	signal kill term hup
-	exec ps
+	exec ps pso
 );
 sub tree_has_actions($);
 sub tree_has_actions($) {
