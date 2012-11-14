@@ -159,8 +159,9 @@ sub get_value_for_printf($$) {
 	}
 }
 
-sub process_arg($$$) {
-	my ($list, $arg, $sprintf_needed) = @_;
+sub process_arg($;$) {
+	my ($arg, $list) = @_;
+	die $list unless not defined $list or 'ARRAY' eq ref $list;
 	my $quoted;
 	if( ref $arg ) {
 		'ARRAY' eq ref $arg or die;
@@ -171,13 +172,13 @@ sub process_arg($$$) {
 	}
 	# here $arg MUST be scalar, plus we have $quoted flag
 	die $arg unless defined $arg and not ref $arg;
-	# we return hashref (when sprintf_needed) or scalar (else)
-	if( not $sprintf_needed ) {
+	# we return hashref (if defined $list) or scalar (else)
+	if( not defined $list ) {
 		return $arg;
 	} elsif( $quoted ) {
 		my %out = map { $_ => $arg } @$list;
 		return \%out;
-	} else { # $sprintf_needed and not $quoted
+	} else { # defined $list and not $quoted
 		$arg =~ s{\\(.)}{do_sprintf_escape($1)}ge;
 		$arg =~ s{\\x([01-9a-f][01-9a-f])}{chr hex $1}gie;
 		my $out = {};
@@ -195,7 +196,7 @@ sub process_arg($$$) {
 
 sub func_printf($$) {
 	my ($list, $format) = @_;
-	my $out = process_arg( $list, $format, 1 );
+	my $out = process_arg( $format, $list );
 	print join "", map { $out->{$_} } sort { $a <=> $b } @$list;
 	return $list;
 }
