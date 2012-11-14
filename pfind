@@ -203,6 +203,7 @@ sub func_printf($$) {
 
 sub func_signal($$) {
 	my ($list, $signal) = @_;
+	$signal = process_arg $signal;
 	$signal = uc $signal;
 	return [ grep { kill $signal, $_ } @$list ];
 }
@@ -255,8 +256,10 @@ sub inc_parent($$) {
 
 sub func_pids($$@) {
 	my ($checklist, $marker, @pids) = @_;
+	@pids = map { process_arg $_ } @pids;
 	die "-pids takes only ';' end marker\n" unless $marker eq ';';
 	die "-pids takes at least one argument\n" unless @pids;
+	/^\d+$/ or die "non-numeric pid in -pids: $_\n" for @pids;
 	my %ok = map { $_ => 1 } @$checklist;
 	return [ grep { $ok{$_} } @pids ];
 }
@@ -303,6 +306,7 @@ sub func_exec($$@) {
 
 sub func_pidfile($$) {
 	my ($checklist, $pidfile) = @_;
+	$pidfile = process_arg $pidfile;
 	open PIDFILE, "<", $pidfile or return [];
 	my $pid = <PIDFILE>;
 	return [] unless defined $pid;
