@@ -103,9 +103,11 @@ sub pattern2re($) {
 	return $re;
 }
 
+sub process_arg($;$);
 sub find_by_prop($$$;@) {
 	my ($list, $pattern, $name, @args) = @_;
 	$list = check_list $list;
+	($pattern, @args) = map { process_arg $_ } ($pattern, @args);
 	return [ grep {
 		cached_get($_, $name, @args) =~ pattern2re($pattern)
 	} @$list ];
