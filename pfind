@@ -264,28 +264,34 @@ sub func_pids($$@) {
 sub func_exec($$@) {
 	my ($checklist, $marker, @args) = @_;
 	die "-exec takes at least two arguments\n" unless @args;
-	my $ok = undef;
-	foreach( @args ) {
-		$ok = 1 if $_ eq '{}';
-	}
-	die "-exec expects at least one '{}' argument\n" unless $ok;
 	if( $marker eq '+' ) {
-		my @cmdline = ();
+		@args = map { process_arg $_ } @args;
+		my @cmdline = ( shift @args );
+		my $count = 0;
 		foreach( @args ) {
 			if( $_ eq '{}' ) {
 				push @cmdline, @$checklist;
+				++$count;
 			} else {
 				push @cmdline, $_;
 			}
 		}
+		1 == $count or die "-exec ... '+' expects exactly one '{}' argument\n";
 		system( @cmdline );
 		return $checklist;
 	} elsif( $marker eq ';' ) {
+		my $cmd = process_arg shift @args;
+		my $ok;
+		/%/ and $ok = 1 for @args;
+		$ok or die "-exec ... ';' expects at least one variable argument\n";
+		my @hashed_args = map {
+			s/^{}$/%pid/;
+			process_arg($_, $checklist)
+		} @args;
 		my @out = ();
 		foreach my $pid ( @$checklist ) {
-			my @cmdline = map {
-				/^\{\}$/ ? $pid : $_
-			} @args;
+			my @cmdline = ($cmd);
+			push @cmdline, map { $_->{$pid} } @hashed_args;
 			system( @cmdline );
 			push @out, $pid unless $? >> 8;
 		}
