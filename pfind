@@ -1,6 +1,7 @@
 #!/usr/bin/perl -w
 # (c) 2012 Sergey Redin sergey@redin.info https://github.com/spiculator/pfind
 use strict;
+use Data::Dumper;
 use Parse::Yapp;
 my $state;
 # a copy of previous expression's result
@@ -585,17 +586,28 @@ sub tree_has_actions($) {
 }
 
 sub main() {
-	my $tree = mktree( @ARGV ); ############### ./pfind -true -or [ -exe test -cwd / -o -status envID 123 ]
-	#use Data::Dumper; print "tree: ", Dumper $tree; ##############################
-	my $do_print_list = not tree_has_actions($tree);
+	my ($quiet, $dump_tree); # options
+	while( @ARGV and $ARGV[0] =~ /^--/ ) {
+		my $option = shift @ARGV;
+		if( $option eq "--" ) {
+			last;
+		} elsif( $option eq "--quiet" ) {
+			$quiet = 1;
+		} elsif( $option eq "--dump-tree" ) {
+			$dump_tree = 1;
+		} else {
+			die "Unknown option: $option\n";
+		}
+	}
+	my $tree = mktree( @ARGV );
+	if( $dump_tree ) {
+		print Data::Dumper->Dump( [$tree], ["SyntaxTree"] );
+		exit 0;
+	}
+	my $skip_print_list = $quiet || tree_has_actions($tree);
 	my $value = evaltree( get_full_proc_list(), $tree );
-	#use Data::Dumper; print "value: ", Dumper $value; ##############################
-	func_list($value) if $do_print_list;
+	func_list($value) unless $skip_print_list;
 	exit( @$value ? 0 : 1 );
 }
 
 main;
-
-#use Data::Dumper; print Dumper find_by_prop "all", "pe", "exe"; ################
-#use Data::Dumper; print Dumper find_by_prop "all", "/proc/7613", "cwd"; ################
-#use Data::Dumper; print Dumper $state; ##############
