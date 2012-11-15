@@ -398,9 +398,9 @@ sub eval_op2($$$$) {
 		if( $op2_num{$name} ) {
 			foreach my $pid ( @$checklist ) {
 				die "left operand '$hashed_arg1->{$pid}' of $name is not numeric for PID $pid\n"
-					unless $hashed_arg1->{$pid} =~ /^\d+$/;
+					unless $hashed_arg1->{$pid} =~ /^[\-\+]?\d+$/;
 				die "right operand '$hashed_arg2->{$pid}' of $name is not numeric for PID $pid\n"
-					unless $hashed_arg2->{$pid} =~ /^\d+$/;
+					unless $hashed_arg2->{$pid} =~ /^[\-\+]?\d+$/;
 			}
 		}
 		return [ grep {
