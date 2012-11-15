@@ -350,20 +350,70 @@ my %funcm = (
 	"pids"		=> \&func_pids,
 	"exec"		=> \&func_exec,
 );
+my %op2 = ( # do not firget to edit %op2_match and %op2_num!
+	"-m"		=> sub { $_[0] =~ pattern2re $_[1] },
+	"=@"		=> "-m",
+	"-nm"		=> sub { $_[0] !~ pattern2re $_[1] },
+	"!@"		=> "-nm",
+	"=~"		=> sub { $_[0] =~ $_[1] },
+	"!~"		=> sub { $_[0] !~ $_[1] },
+	"=="		=> sub { $_[0] eq $_[1] },
+	"!="		=> sub { $_[0] ne $_[1] },
+	-eq		=> sub { $_[0] == $_[1] },
+	-ne		=> sub { $_[0] != $_[1] },
+	-lt		=> sub { $_[0] < $_[1] },
+	-le		=> sub { $_[0] <= $_[1] },
+	-gt		=> sub { $_[0] > $_[1] },
+	-ge		=> sub { $_[0] >= $_[1] },
+);
+# match operations have constant second argument:
+my %op2_match = map {$_ => 1 } qw/ -m =@ -nm !@ =~ !~ /;
+# arguments of numeric operations are checked to be numeric:
+my %op2_num = map { $_ => 1 } qw/ -eq -ne -lt -le -gt -ge /;
 
-sub get_args($$$) {
-	my ($cmdline, $funcname, $argnum) = @_;
+sub eval_op2($$$$) {
+	my ($checklist, $name, $arg1, $arg2) = @_;
+	die unless defined $name and not ref $name;
+	my $code = $op2{$name};
+	$code = $op2{$code} if not ref $code;
+	die $name unless 'CODE' eq ref $code;
+	if( $op2_match{$name} ) {
+		my $hashed_arg1 = process_arg( $arg1, $checklist );
+		$arg2 = process_arg $arg2;
+		return [ grep {
+			$code->( $hashed_arg1->{$_}, $arg2 )
+		} @$checklist ];
+	} else {
+		my $hashed_arg1 = process_arg( $arg1, $checklist );
+		my $hashed_arg2 = process_arg( $arg2, $checklist );
+		if( $op2_num{$name} ) {
+			foreach my $pid ( @$checklist ) {
+				die "left operand '$hashed_arg1->{$pid}' of $name is not numeric for PID $pid\n"
+					unless $hashed_arg1->{$pid} =~ /^\d+$/;
+				die "right operand '$hashed_arg2->{$pid}' of $name is not numeric for PID $pid\n"
+					unless $hashed_arg2->{$pid} =~ /^\d+$/;
+			}
+		}
+		return [ grep {
+			$code->( $hashed_arg1->{$_}, $hashed_arg2->{$_} )
+		} @$checklist ];
+	}
+}
+
+sub get_args($$$;$) {
+	my ($cmdline, $funcname, $argnum, $desc) = @_;
 	# argnum=0 for funcm (-pids/-exec) which ends with ';' or '+'
 	$argnum =~ /^\d+$/ or die;
 	my @args = ();
 	for( my $i = 1; $i <= $argnum or not $argnum; $i++ ) {
-		@$cmdline or die "cannot get argument $i for $funcname\n";
+		$desc ||= "argument $i for $funcname";
+		@$cmdline or die "cannot get $desc\n";
 		my $step1 = shift @$cmdline;
 		if( not $argnum and $step1 =~ /^[;\+]$/ ) {
 			unshift @args, $step1; # the end marker goes first
 			last;
 		} elsif( $step1 eq "-quote" ) {
-			@$cmdline or die "cannot get quoted argument $i for $funcname\n";
+			@$cmdline or die "cannot get quoted $desc\n";
 			push @args, [ 'QUOTE', shift @$cmdline ];
 		} else {
 			die $step1 unless defined $step1
@@ -387,7 +437,7 @@ sub tokenize(@) {
 			push @out, [ 'AND', $a ];
 		} elsif( $a =~ /^-or?$/ ) {
 			push @out, [ 'OR', $a ];
-		} elsif( $a =~ /^-(\w+)$/ ) {
+		} elsif( $a =~ /^-(\w+)$/ and $a ne '-quote' ) {
 			my $name = $1;
 			if( $func0{$name} ) {
 				push @out, [ 'FUNC', [ 'FUNC', $name ] ];
@@ -404,7 +454,15 @@ sub tokenize(@) {
 				die "unknown function: $name\n";
 			}
 		} else {
-			die "unknown token: $a\n";
+			unshift @cmdline, $a;
+			my ($left) = get_args( \@cmdline, "(unknown)", 1,
+				"left operand of unknown operation" );
+			@cmdline or die "end of cmdline found where operation expected\n";
+			my $op2name = shift @cmdline;
+			$op2{$op2name} or die "unknown string '$op2name' found where operation expected\n";
+			my ($right) = get_args( \@cmdline, $op2name, 1,
+				"right operand of unknown operation" );
+			push @out, [ 'OP2', [ 'OP2', $op2name, $left, $right ] ];
 		}
 	}
 	return [ @out ];
@@ -448,6 +506,7 @@ not_exp:
 	;
 atom:
 	FUNC
+	| OP2
 	| block
 	;
 block:
@@ -571,6 +630,13 @@ sub evaltree($$) {
 		$list = evalfunc( $list, $name, @tree );
 		$previous_list = $list;
 		return $list;
+	} elsif( $op eq 'OP2' ) {
+		# $after_OR is not changed here
+		3 == @tree or die "$op takes three args\n";
+		my ($op2name, $left, $right) = @tree;
+		$list = eval_op2( $list, $op2name, $left, $right );
+		$previous_list = $list;
+		return $list;
 	} else {
 		die "unknown op: $op\n";
 	}
@@ -590,6 +656,8 @@ sub tree_has_actions($) {
 		foreach my $subtree (@copy) {
 			return 1 if tree_has_actions($subtree);
 		}
+		return undef;
+	} elsif( $op eq 'OP2' ) {
 		return undef;
 	} elsif( $op eq 'FUNC' ) {
 		my $name = shift @copy;
