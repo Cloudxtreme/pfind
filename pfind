@@ -175,14 +175,16 @@ sub process_arg($;$) {
 	# here $arg MUST be scalar, plus we have $quoted flag
 	die $arg unless defined $arg and not ref $arg;
 	# we return hashref (if defined $list) or scalar (else)
+	if( not $quoted ) {
+		$arg =~ s{\\(.)}{do_sprintf_escape($1)}ge;
+		$arg =~ s{\\x([01-9a-f][01-9a-f])}{chr hex $1}gie;
+	}
 	if( not defined $list ) {
 		return $arg;
 	} elsif( $quoted ) {
 		my %out = map { $_ => $arg } @$list;
 		return \%out;
 	} else { # defined $list and not $quoted
-		$arg =~ s{\\(.)}{do_sprintf_escape($1)}ge;
-		$arg =~ s{\\x([01-9a-f][01-9a-f])}{chr hex $1}gie;
 		my $out = {};
 		foreach my $pid (@$list) {
 			my $formatted = $arg;
@@ -200,6 +202,12 @@ sub func_printf($$) {
 	my ($list, $format) = @_;
 	my $out = process_arg( $format, $list );
 	print join "", map { $out->{$_} } sort { $a <=> $b } @$list;
+	return $list;
+}
+
+sub func_print1($$) {
+	my ($list, $string) = @_;
+	print process_arg $string;
 	return $list;
 }
 
@@ -337,6 +345,7 @@ my %func1 = ( # see also %alias0
 	"cwd"		=> sub { find_by_prop( shift, shift, "cwd" ) },
 	"root"		=> sub { find_by_prop( shift, shift, "root" ) },
 	"printf"	=> \&func_printf,
+	"print1"	=> \&func_print1,
 	"signal"	=> \&func_signal,
 	"ps"		=> sub { func_exec( shift, '+', 'ps', shift, '{}' ) },
 	"pso"		=> sub { func_exec( shift, '+', 'ps', '-o', shift, '{}' ) },
@@ -643,7 +652,7 @@ sub evaltree($$) {
 }
 
 my %is_action = map { $_ => 1 } qw(
-	list printf
+	list printf print1
 	signal kill term hup
 	exec ps pso
 );
