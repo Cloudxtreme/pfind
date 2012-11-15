@@ -32,7 +32,6 @@ do not add to many functions, prefer things like %exe -m '*bash', %cwd =~ '^a', 
 -!m shorthand: "%exe -!m '*bash'" is "-not %exe -m '*bash'" (this seems to be the only useful case for such shorthand)
 -lt/-gt/-eq/-ne for numeric comparison, ==/!= for strings, =~/!~ for perlre, := for assignment, = is never used
 all strings must be formatted by default, so there's no need for -sprintf; use -quote <string> if you need to skip formatting
--sort %pid/%vsz etc (and remove sorts in -list and -printf); use -sort -%var if you need descending sort
 (maybe) some network checks
 -fprintf
 (maybe) something like -interactive [ -hup ] and -sort %pid [ ... ] in grammar instead of using -and and -or

@@ -17,6 +17,7 @@ sub get_full_proc_list() {
 		push @$list, $_ if /^\d+$/;
 	}
 	closedir PROC or die $!;
+	$list = [ sort { $a <=> $b } @$list ];
 	return ( $state->{"all"} = $list );
 }
 
@@ -115,8 +116,7 @@ sub find_by_prop($$$;@) {
 
 sub func_list($) {
 	my $list = shift;
-	my @sorted = sort { $a <=> $b } @$list;
-	print "@sorted\n";
+	print "@$list\n";
 	return $list;
 }
 
@@ -201,7 +201,7 @@ sub process_arg($;$) {
 sub func_printf($$) {
 	my ($list, $format) = @_;
 	my $out = process_arg( $format, $list );
-	print join "", map { $out->{$_} } sort { $a <=> $b } @$list;
+	print join "", map { $out->{$_} } @$list;
 	return $list;
 }
 
@@ -328,6 +328,15 @@ sub func_pidfile($$) {
 	return [ $pid ];
 }
 
+sub func_sort($$) {
+	my ($checklist, $value) = @_;
+	process_arg($value) =~ /%/ or die "-sort expects variable argument\n";
+	my $hashed_value = process_arg( $value, $checklist );
+	return [ sort {
+		$hashed_value->{$a} <=> $hashed_value->{$b}
+	} @$checklist ];
+}
+
 my %func0 = (
 	"true"	=> sub { return $_[0] },
 	"false"	=> sub { return [] },
@@ -350,6 +359,7 @@ my %func1 = ( # see also %alias0
 	"ps"		=> sub { func_exec( shift, '+', 'ps', shift, '{}' ) },
 	"pso"		=> sub { func_exec( shift, '+', 'ps', '-o', shift, '{}' ) },
 	"pidfile"	=> \&func_pidfile,
+	"sort"		=> \&func_sort,
 );
 my %func2 = (
 	"status"	=> sub { ... },

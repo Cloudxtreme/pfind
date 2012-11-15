@@ -29,6 +29,11 @@ like that of `find`. **It is not finished yet**, but stay tuned.
 	pfind [ -pidfile /var/run/apache.pid -exe /usr/sbin/apache \
 		-or -descendants ] -kill
 
+	# pretty print list of processes with big utime, sorted by utime:
+	pfind %stat::utime -gt 100 -sort -%stat::utime \
+		-print1 'UTIME \tPID \tCOMM\n' \
+		-printf '%stat::utime \t%pid \t%comm\n'
+
 ## NOT YET IMPLEMENTED EXAMPLES
 
 	# "+" is to run `ps` command with all pids, not one by one:
