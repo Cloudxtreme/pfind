@@ -337,6 +337,23 @@ sub func_sort($$) {
 	} @$checklist ];
 }
 
+sub func_head($$) {
+	my ($checklist, $num) = @_;
+	$num = process_arg $num;
+	die "-head expects positive numeric argument\n"
+		unless $num =~ /^\d+$/ and $num > 0;
+	return [ @$checklist[0..$num-1] ];
+}
+sub func_tail($$) {
+	my ($checklist, $num) = @_;
+	$num = process_arg $num;
+	die "-tail expects positive numeric argument\n"
+		unless $num =~ /^\d+$/ and $num > 0;
+	my $total = @$checklist;
+	$num = $total if $num > $total;
+	return [ @$checklist[$total-$num .. $total-1] ];
+}
+
 my %func0 = (
 	"true"	=> sub { return $_[0] },
 	"false"	=> sub { return [] },
@@ -360,6 +377,8 @@ my %func1 = ( # see also %alias0
 	"pso"		=> sub { func_exec( shift, '+', 'ps', '-o', shift, '{}' ) },
 	"pidfile"	=> \&func_pidfile,
 	"sort"		=> \&func_sort,
+	"head"		=> \&func_head,
+	"tail"		=> \&func_tail,
 );
 my %func2 = (
 	"status"	=> sub { ... },
