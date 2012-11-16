@@ -39,6 +39,8 @@ Pretty print list of processes with big `utime`, sorted by `utime`:
 		-print1 'UTIME \tPID \tCOMM\n' \
 		-printf '%stat::utime \t%pid \t%comm\n'
 
+## NOT YET IMPLEMENTED EXAMPLES
+
 `+` is to run `ps` command with all PIDs, not one by one:
 
 	pfind %user == mike -exec ps j {} +		
@@ -46,8 +48,6 @@ Pretty print list of processes with big `utime`, sorted by `utime`:
 Same as previous:
 
 	pfind %user == mike -ps j
-
-## NOT YET IMPLEMENTED EXAMPLES
 
 Interactive kill, `;` is to run `kill` for each PID one by one:
 
