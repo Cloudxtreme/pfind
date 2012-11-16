@@ -63,7 +63,7 @@ sub get_stat($) {
 	return \%out;
 }
 
-my %getters0 = ( # see also %alias0
+my %getters0 = (
 	"pid"    => sub { return shift },
 	"exe"	=> sub { readlink("/proc/$_[0]/exe") // "" },
 	"cwd"	=> sub { readlink("/proc/$_[0]/cwd") // "" },
@@ -102,16 +102,6 @@ sub pattern2re($) {
 		$pattern2re_cache{$pattern} = $re;
 	}
 	return $re;
-}
-
-sub process_arg($;$);
-sub find_by_prop($$$;@) {
-	my ($list, $pattern, $name, @args) = @_;
-	$list = check_list $list;
-	($pattern, @args) = map { process_arg $_ } ($pattern, @args);
-	return [ grep {
-		cached_get($_, $name, @args) =~ pattern2re($pattern)
-	} @$list ];
 }
 
 sub func_list($) {
@@ -366,10 +356,7 @@ my %func0 = (
 	"parents"	=> sub { func_additions( shift, "parents", \&inc_parent, 1 ) },
 	"ancestors"	=> sub { func_additions shift, "ancestors", \&inc_parent, undef },
 );
-my %func1 = ( # see also %alias0
-	"exe"		=> sub { find_by_prop( shift, shift, "exe" ) },
-	"cwd"		=> sub { find_by_prop( shift, shift, "cwd" ) },
-	"root"		=> sub { find_by_prop( shift, shift, "root" ) },
+my %func1 = (
 	"printf"	=> \&func_printf,
 	"print1"	=> \&func_print1,
 	"signal"	=> \&func_signal,
@@ -381,8 +368,7 @@ my %func1 = ( # see also %alias0
 	"tail"		=> \&func_tail,
 );
 my %func2 = (
-	"status"	=> sub { ... },
-	"stat"		=> sub { find_by_prop( $_[0], $_[2], "stat", $_[1] ) },
+	# reserved for user-defined functions
 );
 my %funcm = (
 	"pids"		=> \&func_pids,
@@ -479,7 +465,7 @@ sub tokenize(@) {
 			my $name = $1;
 			if( $func0{$name} ) {
 				push @out, [ 'FUNC', [ 'FUNC', $name ] ];
-			} elsif( $func1{$name} or $alias0{$name} ) {
+			} elsif( $func1{$name} ) {
 				push @out, [ 'FUNC', [ 'FUNC', $name,
 					get_args(\@cmdline, $a, 1) ] ];
 			} elsif( $func2{$name} ) {
@@ -574,12 +560,7 @@ sub mktree(@) {
 
 sub evalfunc($$@) {
 	my ($list, $name, @args) = @_;
-	if( $alias0{$name} ) {
-		die "alias $name takes 1 arg\n" unless 1 == @args;
-		my ($_name, @_args) = ( @{$alias0{$name}}, @args );
-		die unless 2 == @_args;
-		return $func2{$_name}->($list, @_args);
-	} elsif( $func0{$name} ) {
+	if( $func0{$name} ) {
 		die "function $name takes no args\n" if @args;
 		return $func0{$name}->($list);
 	} elsif( $func1{$name} ) {
