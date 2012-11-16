@@ -16,7 +16,7 @@ Pattern matching with `-m`:
 
 Print something more than just a list of PIDs:
 
-	pfind [ %exe == /bin/rm -or %cwd == /etc ] -printf '%exe (pid=%pid) in %{cwd}\n'
+	pfind [ %exe == /bin/rm -or %cwd == /etc ] -printf '%exe (pid=%pid) in %cwd\n'
 
 Send `SIGHUP` to process with PID in `/var/run/apache.pid`,
 but only if it is really `/usr/bin/apache`:
