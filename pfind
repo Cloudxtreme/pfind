@@ -38,12 +38,33 @@ sub check_list($) {
 	}
 }
 
+sub read_file($) {
+	my $path = shift;
+	die $path unless defined $path and not ref $path;
+	die "absolute path expected: $path\n" unless $path =~ /^\//;
+	open FILE, "<", $path or return undef;
+	local $/ = undef;
+	my $contents = <FILE>;
+	close FILE or return undef;
+	return $contents;
+}
+
+sub read_line_from_file($) {
+	my $path = shift;
+	die $path unless defined $path and not ref $path;
+	die "absolute path expected: $path\n" unless $path =~ /^\//;
+	open FILE, "<", $path or return undef;
+	my $line = <FILE>;
+	return undef unless defined $line;
+	close FILE or return undef;
+	chomp $line;
+	return $line;
+}
+
 sub get_stat($) {
 	my $pid = shift;
-	open STAT, "/proc/$pid/stat" or return undef;
-	my $line = <STAT>;
+	my $line = read_file "/proc/$pid/stat"; # yes, read_file
 	return undef unless defined $line;
-	close STAT or return undef;
 	$line =~ /^(\d+) \((.*)\) (\w) (\d+(\s+-?\d+)+)$/ or die "bad stat: $line";
 	my %out = ( pid => $1, comm => $2, state => $3 );
 	my @rest = split /\s+/, $4;
@@ -70,11 +91,8 @@ sub parse_statmlike_file($@) {
 	my ($path, @names) = @_;
 	die unless @names;
 	my $out = {};
-	open FILE, "<", $path or return $out;
-	my $line = <FILE>;
+	my $line = read_line_from_file $path;
 	return $out unless defined $line;
-	close FILE or return $out;
-	chomp $line;
 	$line =~ /^\d[\d\s]+$/ or die "bad line: $line";
 	my @values = split /\s+/, $line;
 	die "wrong number of values from $path\n" unless @values == @names;
@@ -335,11 +353,8 @@ sub func_exec($$@) {
 sub func_pidfile($$) {
 	my ($checklist, $pidfile) = @_;
 	$pidfile = process_arg $pidfile;
-	open PIDFILE, "<", $pidfile or return [];
-	my $pid = <PIDFILE>;
+	my $pid = read_line_from_file $pidfile;
 	return [] unless defined $pid;
-	close PIDFILE or return [];
-	chomp $pid;
 	$pid =~ /^\d+$/ or return [];
 	my %ok = map { $_ => 1 } @$checklist;
 	$ok{$pid} or return [];
