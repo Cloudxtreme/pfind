@@ -375,6 +375,8 @@ sub func_head($$) {
 	$num = process_arg $num;
 	die "-head expects positive numeric argument\n"
 		unless $num =~ /^\d+$/ and $num > 0;
+	my $total = @$checklist;
+	$num = $total if $num > $total;
 	return [ @$checklist[0..$num-1] ];
 }
 sub func_tail($$) {
