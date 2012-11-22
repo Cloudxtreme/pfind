@@ -3,13 +3,14 @@
 use strict;
 use Data::Dumper;
 use Parse::Yapp;
+die "pfind is only for linux\n" unless $^O eq "linux";
+use POSIX qw/sysconf _SC_PAGESIZE/;
+my $PAGESIZE = sysconf(_SC_PAGESIZE);
 my $state;
 # a copy of previous expression's result
 # for things like -children/-parents/-descendants/-ancestors:
 my $previous_list;
 our $after_OR = undef;
-
-die unless $^O eq "linux";
 
 sub get_full_proc_list() {
 	return $state->{"all"} if exists $state->{"all"};
@@ -65,6 +66,30 @@ sub get_stat($) {
 	return \%out;
 }
 
+sub parse_statmlike_file($@) {
+	my ($path, @names) = @_;
+	die unless @names;
+	my $out = {};
+	open FILE, "<", $path or return $out;
+	my $line = <FILE>;
+	return $out unless defined $line;
+	close FILE or return $out;
+	chomp $line;
+	$line =~ /^\d[\d\s]+$/ or die "bad line: $line";
+	my @values = split /\s+/, $line;
+	die "wrong number of values from $path\n" unless @values == @names;
+	$out->{$_} = shift @values foreach @names;
+	return $out;
+}
+
+sub get_statm($) {
+	my $pid = shift;
+	my $out = parse_statmlike_file( "/proc/$pid/statm",
+		qw/size resident share text lib data dt/ );
+	$out->{$_} *= $PAGESIZE foreach keys %$out;
+	return $out;
+}
+
 my %getters0 = (
 	"pid"    => sub { return shift },
 	"exe"	=> sub { readlink("/proc/$_[0]/exe") // "" },
@@ -73,6 +98,7 @@ my %getters0 = (
 );
 my %getters1 = (
 	"stat"	=> \&get_stat,
+	"statm"	=> \&get_statm,
 );
 
 sub cached_get($$;@) {
