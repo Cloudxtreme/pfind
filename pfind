@@ -161,12 +161,13 @@ sub cached_get($$;@) {
 	my ($pid, $name, @args) = @_;
 	if( exists $getters0{$name} ) {
 		0 == @args or die "function $name takes no arguments\n";
-		return( $state->{$pid}{$name} //= $getters0{$name}->($pid) );
+		$state->{$pid}{$name} //= $getters0{$name}->($pid);
+		return $state->{$pid}{$name} // "(undef)";
 	} elsif( exists $getters1{$name} ) {
 		1 == @args or die "function $name takes one argument\n";
 		my ($arg1) = @args;
 		$state->{$pid}{$name} //= $getters1{$name}->($pid);
-		return $state->{$pid}{$name}{$arg1};
+		return $state->{$pid}{$name}{$arg1} // "(undef)";
 	} else {
 		die "unknown function: $name";
 	}

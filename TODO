@@ -2,7 +2,6 @@ TODO before v0.1:
 
 -status (alias -veid = -status envID)
 compare "-stat state" with "-status State", maybe fix some other duplicates
-(maybe) //= "" in cached_get
 func2 -status
 -pidlist 1 243 435 345 ';'
 
