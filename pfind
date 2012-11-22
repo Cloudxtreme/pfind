@@ -108,6 +108,43 @@ sub get_statm($) {
 	return $out;
 }
 
+my %multipliers = (
+	B	=> 1,
+	kB	=> 1024,
+	KB	=> 1024,
+	MB	=> 1024**2,
+	GB	=> 1024**3,
+	TB	=> 1024**4,
+	PB	=> 1024**5,
+	kiB	=> 1000,
+	KiB	=> 1000,
+	MiB	=> 1000**2,
+	GiB	=> 1000**3,
+	TiB	=> 1000**4,
+	PiB	=> 1000**5,
+);
+sub fix_kb($) {
+	my $value = shift;
+	if( $value =~ /^(\d+)\s+(\w\w?B)$/ ) {
+		my $multiplier = $multipliers{$2};
+		die $value unless defined $multiplier;
+		return $1 * $multiplier;
+	} else {
+		return $value;
+	}
+}
+
+sub get_status($) {
+	my $pid = shift;
+	my $out = {};
+	foreach ( read_file "/proc/$pid/status" ) {
+		chomp;
+		/^(\w+):\s+(.*)$/ or die "Bad line from status for $pid: $_\n";
+		$out->{$1} = fix_kb $2;
+	}
+	return $out;
+}
+
 my %getters0 = (
 	"pid"    => sub { return shift },
 	"exe"	=> sub { readlink("/proc/$_[0]/exe") // "" },
@@ -117,6 +154,7 @@ my %getters0 = (
 my %getters1 = (
 	"stat"	=> \&get_stat,
 	"statm"	=> \&get_statm,
+	"status" => \&get_status,
 );
 
 sub cached_get($$;@) {
