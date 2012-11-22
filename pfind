@@ -43,10 +43,9 @@ sub read_file($) {
 	die $path unless defined $path and not ref $path;
 	die "absolute path expected: $path\n" unless $path =~ /^\//;
 	open FILE, "<", $path or return undef;
-	local $/ = undef;
-	my $contents = <FILE>;
+	my @contents = <FILE>;
 	close FILE or return undef;
-	return $contents;
+	return @contents;
 }
 
 sub read_line_from_file($) {
@@ -63,9 +62,10 @@ sub read_line_from_file($) {
 
 sub get_stat($) {
 	my $pid = shift;
-	my $line = read_file "/proc/$pid/stat"; # yes, read_file
+	my $line = join "", read_file "/proc/$pid/stat"; # comm may be multi-line
 	return undef unless defined $line;
-	$line =~ /^(\d+) \((.*)\) (\w) (\d+(\s+-?\d+)+)$/ or die "bad stat: $line";
+	chomp $line;
+	$line =~ /^(\d+) \((.*)\) (\w) (\d+(\s+-?\d+)+)$/s or die "bad stat: $line";
 	my %out = ( pid => $1, comm => $2, state => $3 );
 	my @rest = split /\s+/, $4;
 	my @rest_names = qw(
