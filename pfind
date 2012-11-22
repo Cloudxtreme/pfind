@@ -9,6 +9,8 @@ my $state;
 my $previous_list;
 our $after_OR = undef;
 
+die unless $^O eq "linux";
+
 sub get_full_proc_list() {
 	return $state->{"all"} if exists $state->{"all"};
 	my $list = [];
