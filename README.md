@@ -4,7 +4,7 @@ pfind
 ## ABOUT
 
 `pfind` is a process finder and manupulation tool with command line syntax
-like that of `find`.
+like that of `find` or `tcpdump`.
 
 ## USAGE EXAMPLES
 
