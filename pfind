@@ -512,6 +512,13 @@ my %op2 = ( # do not firget to edit %op2_match and %op2_num!
 	-ge		=> sub { $_[0] >= $_[1] },
 	":="		=> sub { die ":= is not a filter like other op2\n" },
 );
+
+my %keywords = map { $_ => 1 } grep { /^[a-z]/ } (
+	qw/and a or o not quote sub/,
+	keys(%func0), keys(%func1), keys(%func2),
+	keys(%funcm), keys(%op2),
+);
+
 # match operations have constant second argument:
 my %op2_match = map {$_ => 1 } qw/ -m =@ -nm !@ =~ !~ /;
 # arguments of numeric operations are checked to be numeric:
@@ -677,6 +684,10 @@ sub mklexer($) {
 
 sub addblock($$) {
 	my ($name, $block) = @_;
+	die "cannot define -$name: already defined\n"
+		if exists $userfunc_blocks->{$name};
+	die "cannot define -$name: it is a keyword\n"
+		if exists $keywords{$name};
 	$userfunc_blocks->{$name} = $block;
 	return [ 'EMPTY', '-sub', $name ];
 }
@@ -891,11 +902,14 @@ sub main() {
 			$quiet = 1;
 		} elsif( $option eq "--dump-tree" ) {
 			$dump_tree = 1;
+		} elsif( $option eq "--dump-keywords" ) {
+			die sprintf "%s\n",
+				join " ", map { "-$_" } sort keys %keywords;
 		} else {
 			die "Unknown option: $option\n";
 		}
 	}
-	my $tree = mktree( @preload, ",", @ARGV );
+	my $tree = mktree( @preload, @ARGV );
 	if( $dump_tree ) {
 		print Data::Dumper->Dump( [$tree], ["SyntaxTree"] );
 		exit 0;
