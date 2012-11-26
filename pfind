@@ -16,6 +16,10 @@ my $previous_list;
 our $after_OR = undef;
 
 my @preload = qw(
+	-sub -kill [ -signal KILL ]
+	-sub -term [ -signal TERM ]
+	-sub -hup  [ -signal HUP  ]
+
 	%vsz := %statm::size
 	%rss := %statm::resident
 
@@ -469,9 +473,6 @@ my %func0 = (
 	"true"	=> sub { return $_[0] },
 	"false"	=> sub { return [] },
 	"list"	=> \&func_list,
-	"kill"	=> sub { func_signal shift, "KILL" },
-	"term"	=> sub { func_signal shift, "TERM" },
-	"hup"	=> sub { func_signal shift, "HUP" },
 	"children"	=> sub { func_additions( shift, "children", \&inc_children, 1 ) },
 	"descendants"	=> sub { func_additions shift, "descendants", \&inc_children, undef },
 	"parents"	=> sub { func_additions( shift, "parents", \&inc_parent, 1 ) },
