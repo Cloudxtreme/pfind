@@ -207,12 +207,6 @@ my %sprintf_escapes = (
 	"\\"	=> "\\",
 );
 
-sub do_sprintf_escape($) {
-	my $char = shift;
-	die unless 1 == length $char;
-	return $sprintf_escapes{$char} // "\\$char";
-}
-
 my %alias0 = (
 	"ppid"	=> [ qw/stat ppid/ ],
 	"comm"	=> [ qw/stat comm/ ],
@@ -251,22 +245,61 @@ sub process_arg($;$) {
 	# here $arg MUST be scalar, plus we have $quoted flag
 	die $arg unless defined $arg and not ref $arg;
 	# we return hashref (if defined $list) or scalar (else)
-	if( not $quoted ) {
-		$arg =~ s{\\(.)}{do_sprintf_escape($1)}ge;
-		$arg =~ s{\\x([01-9a-f][01-9a-f])}{chr hex $1}gie;
-	}
 	if( not defined $list ) {
-		return $arg;
+		return $arg if $quoted;
+		my $rest = $arg;
+		my $out = "";
+		while( length $rest ) {
+			if( $rest =~ /^\\x([01-9a-f]{2})(.*)$/ ) {
+				$out .= chr hex $1;
+				$rest = $2;
+			} elsif( $rest =~ /^\\(.)(.*)$/ ) {
+				my $add = $sprintf_escapes{$1} // "\\$1";
+				$out .= $add;
+				$rest = $2;
+			} elsif( $rest =~ /^([^\\]+)(.*)$/ ) {
+				$out .= $1;
+				$rest = $2;
+			} else {
+				die;
+			}
+		}
+		return $out;
 	} elsif( $quoted ) {
 		my %out = map { $_ => $arg } @$list;
 		return \%out;
 	} else { # defined $list and not $quoted
-		my $out = {};
-		foreach my $pid (@$list) {
-			my $formatted = $arg;
-			$formatted =~ s{%([a-z]\w*(::[a-z]\w*)*)}{get_value_for_printf( $pid, $1 )}gie;
-			# '%{', '%{' and '%(' are reserved 
-			$out->{$pid} = $formatted;
+		my $out = { map { $_ => "" } @$list };
+		my @rest = ( $arg );
+		while( @rest ) {
+			if( not length $rest[0] ) {
+				shift @rest;
+			} elsif( $rest[0] =~ /^([^\\%]+)(.*)$/ ) {
+				$out->{$_} .= $1 for @$list;
+				$rest[0] = $2;
+			} elsif( $rest[0] =~ /^\\x([01-9a-f]{2})(.*)$/ ) {
+				my $add = chr hex $1;
+				$out->{$_} .= $add for @$list;
+				$rest[0] = $2;
+			} elsif( $rest[0] =~ /^\\(.)(.*)$/ ) {
+				my $add = $sprintf_escapes{$1} // "\\$1";
+				$out->{$_} .= $add for @$list;
+				$rest[0] = $2;
+			} elsif( $rest[0] =~ /^%(([a-z]\w*)(::[a-z]\w*)*)(.*)$/ ) {
+				my ($exp, $name, $args) = ($1, $2, $3);
+				$rest[0] = $4;
+				if( $vars->{$name} ) {
+					die "\%$name takes no args\n"
+						if defined $args and length $args;
+					unshift @rest, $vars->{$name};
+				} else {
+					foreach my $pid ( @$list ) {
+						$out->{$pid} .= get_value_for_printf( $pid, $exp );
+					}
+				}
+			} else {
+				die "bad string: $rest[0]\n"
+			}
 		}
 		return $out;
 	}
@@ -401,7 +434,7 @@ sub func_pidfile($$) {
 
 sub func_sort($$) {
 	my ($checklist, $value) = @_;
-	process_arg($value) =~ /%/ or die "-sort expects variable argument\n";
+	$value =~ /%/ or die "-sort expects unquoted variable argument\n";
 	my $hashed_value = process_arg( $value, $checklist );
 	return [ sort {
 		$hashed_value->{$a} <=> $hashed_value->{$b}
