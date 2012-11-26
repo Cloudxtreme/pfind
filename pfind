@@ -206,7 +206,7 @@ sub pattern2re($) {
 
 sub func_list($) {
 	my $list = shift;
-	print "@$list\n";
+	print "@$list\n" if @$list;
 	return $list;
 }
 
