@@ -218,15 +218,7 @@ my %sprintf_escapes = (
 sub get_value_for_printf($$) {
 	my ($pid, $long_name) = @_;
 	my ($name, @args) = split /::/, $long_name;
-	if( @args > 1 ) {
-		...
-	} elsif( 1 == @args ) {
-		return cached_get( $pid, $name, @args );
-	} elsif( 0 == @args ) {
-		return cached_get( $pid, $name );
-	} else {
-		die;
-	}
+	return cached_get( $pid, $name, @args );
 }
 
 sub process_arg($;$) {
