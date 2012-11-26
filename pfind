@@ -6,7 +6,8 @@ use Parse::Yapp;
 die "pfind is only for linux\n" unless $^O eq "linux";
 use POSIX qw/sysconf _SC_PAGESIZE/;
 my $PAGESIZE = sysconf(_SC_PAGESIZE);
-my $state;
+my $state = {};
+my $vars = {};
 # a copy of previous expression's result
 # for things like -children/-parents/-descendants/-ancestors:
 my $previous_list;
@@ -264,9 +265,7 @@ sub process_arg($;$) {
 		foreach my $pid (@$list) {
 			my $formatted = $arg;
 			$formatted =~ s{%([a-z]\w*(::[a-z]\w*)*)}{get_value_for_printf( $pid, $1 )}gie;
-			$formatted =~ s{%\[([a-z]\w*(::[a-z]\w*)*)\]}{get_value_for_printf( $pid, $1 )}gie;
-			$formatted =~ s{%\{([a-z]\w*(::[a-z]\w*)*)\}}{get_value_for_printf( $pid, $1 )}gie;
-			$formatted =~ s{%\(([a-z]\w*(::[a-z]\w*)*)\)}{get_value_for_printf( $pid, $1 )}gie;
+			# '%{', '%{' and '%(' are reserved 
 			$out->{$pid} = $formatted;
 		}
 		return $out;
@@ -473,15 +472,41 @@ my %op2 = ( # do not firget to edit %op2_match and %op2_num!
 	-le		=> sub { $_[0] <= $_[1] },
 	-gt		=> sub { $_[0] > $_[1] },
 	-ge		=> sub { $_[0] >= $_[1] },
+	":="		=> sub { die ":= is not a filter like other op2\n" },
 );
 # match operations have constant second argument:
 my %op2_match = map {$_ => 1 } qw/ -m =@ -nm !@ =~ !~ /;
 # arguments of numeric operations are checked to be numeric:
 my %op2_num = map { $_ => 1 } qw/ -eq -ne -lt -le -gt -ge /;
 
+sub assign($;$) {
+	my ($name, $value) = @_;
+	# we do not use process_arg(), this is probably not good
+	die "variable name cannot be quoted in :=\n" if ref $name;
+	die "variable value cannot be quoted in :=\n" if ref $value;
+	die unless defined $name; # undefined $value will remove variable
+	$name =~ /^%(\w+)$/ or
+		die "first operand of := must be a variable name\n";
+	$name = $1; # drop initial '%'
+	$name =~ /^[a-zA-Z]/ or die "variable name must start with a letter\n";
+	# upper case names are reserved for global (not per-PID) variables
+	$name =~ /[A-Z]/ and die "variable name must be lower case\n";
+	if( exists $vars->{$name} ) {
+		"variable \%$name already exists\n";
+	} elsif( not defined $value ) {
+		delete $vars->{$name};
+	} else {
+		$vars->{$name} = $value;
+	}
+}
+
 sub eval_op2($$$$) {
 	my ($checklist, $name, $arg1, $arg2) = @_;
 	die unless defined $name and not ref $name;
+	if( $name eq ":=" ) {
+		assign( $arg1, $arg2 );
+		return $checklist;
+	}
 	my $code = $op2{$name};
 	$code = $op2{$code} if not ref $code;
 	die $name unless 'CODE' eq ref $code;
