@@ -523,7 +523,7 @@ sub assign($;$) {
 	# upper case names are reserved for global (not per-PID) variables
 	$name =~ /[A-Z]/ and die "variable name must be lower case\n";
 	if( exists $vars->{$name} ) {
-		"variable \%$name already exists\n";
+		die "variable \%$name already exists\n";
 	} elsif( not defined $value ) {
 		delete $vars->{$name};
 	} else {
