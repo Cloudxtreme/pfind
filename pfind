@@ -18,6 +18,10 @@ our $after_OR = undef;
 my @preload = qw(
 	%vsz := %statm::size
 	%rss := %statm::resident
+
+	-sub -kthread [ 0 == %rss ]
+	-sub -userspace [ ! -kthread ]
+
 	%ppid := %stat::ppid
 	%comm := %stat::comm
 	%state := %stat::state
