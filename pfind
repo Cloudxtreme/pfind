@@ -161,7 +161,7 @@ sub get_status($) {
 }
 
 my %getters0 = (
-	"pid"    => sub { return shift },
+	"pid"	=> sub { return shift },
 	"exe"	=> sub { readlink("/proc/$_[0]/exe") // "" },
 	"cwd"	=> sub { readlink("/proc/$_[0]/cwd") // "" },
 	"root"	=> sub { readlink("/proc/$_[0]/root") // "" },
