@@ -283,7 +283,7 @@ sub process_arg($;$) {
 			} elsif( $rest[0] =~ /^%(([a-z]\w*)(::[a-z]\w*)*)(.*)$/ ) {
 				my ($exp, $name, $args) = ($1, $2, $3);
 				$rest[0] = $4;
-				if( $vars->{$name} ) {
+				if( exists $vars->{$name} ) {
 					die "\%$name takes no args\n"
 						if defined $args and length $args;
 					my $value = $vars->{$name};
@@ -574,14 +574,14 @@ sub get_args($$$;$) {
 	$argnum =~ /^\d+$/ or die;
 	my @args = ();
 	for( my $i = 1; $i <= $argnum or not $argnum; $i++ ) {
-		$desc ||= "argument $i for $funcname";
-		@$cmdline or die "cannot get $desc\n";
+		my $curdesc = $desc // "argument $i for $funcname";
+		@$cmdline or die "cannot get $curdesc\n";
 		my $step1 = shift @$cmdline;
 		if( not $argnum and $step1 =~ /^[;\+]$/ ) {
 			unshift @args, $step1; # the end marker goes first
 			last;
 		} elsif( $step1 eq "-quote" ) {
-			@$cmdline or die "cannot get quoted $desc\n";
+			@$cmdline or die "cannot get quoted $curdesc\n";
 			push @args, [ 'QUOTE', shift @$cmdline ];
 		} else {
 			die $step1 unless defined $step1
@@ -635,6 +635,11 @@ sub tokenize(@) {
 			} elsif( $funcm{$name} ) {
 				push @out, [ 'FUNC', [ 'FUNC', $name,
 					get_args(\@cmdline, $a, 0) ] ];
+			} elsif( $userfunc_args->{$name} ) {
+				my $num = scalar @{$userfunc_args->{$name}};
+				push @out, [ 'FUNC', [ 'FUNC', $name,
+					( $num ? get_args(\@cmdline, $a, $num) : () )
+				] ];
 			} else {
 				die "unknown function: $name\n";
 			}
@@ -744,6 +749,18 @@ sub evalfunc($$@) {
 		return $func2{$name}->($list, $arg1, $arg2);
 	} elsif( $funcm{$name} ) {
 		return $funcm{$name}->($list, @args);
+	} elsif( $userfunc_args->{$name} ) {
+		my $num = scalar @{$userfunc_args->{$name}};
+		die "user defined function -$name takes $num arguments\n"
+			unless @args == $num;
+		foreach my $i ( 0 .. $num-1 ) {
+			assign( $userfunc_args->{$name}[$i], $args[$i] );
+		}
+		my $out = evaltree( $list, $userfunc_blocks->{$name} );
+		foreach my $i ( 0 .. $num-1 ) {
+			assign( $userfunc_args->{$name}[$i] ); # remove var
+		}
+		return $out;
 	} else {
 		die "unknown function: $name\n";
 	}
