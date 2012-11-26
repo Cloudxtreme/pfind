@@ -8,6 +8,8 @@ use POSIX qw/sysconf _SC_PAGESIZE/;
 my $PAGESIZE = sysconf(_SC_PAGESIZE);
 my $state = {};
 my $vars = {};
+my $userfunc_args = {};
+my $userfunc_blocks = {};
 # a copy of previous expression's result
 # for things like -children/-parents/-descendants/-ancestors:
 my $previous_list;
@@ -603,6 +605,23 @@ sub tokenize(@) {
 			push @out, [ 'AND', $a ];
 		} elsif( $a =~ /^-or?$/ ) {
 			push @out, [ 'OR', $a ];
+		} elsif( $a eq "-sub" ) {
+			@cmdline or die "end of cmdline found where function name expected\n";
+			my $funcname = shift @cmdline;
+			$funcname =~ s/^-// or die "function name must start with dash\n";
+			$funcname =~ /^[a-z][a-z01-9_]*$/ or die "bad function name: -$funcname\n";
+			my @funcargs = ();
+			while( @cmdline and $cmdline[0] =~ /^%/ ) {
+				my $arg = shift @cmdline;
+				$arg =~ /^%([a-z][a-z01-9_]*)$/ or die "bad argument: $arg\n";
+				push @funcargs, $arg;
+			}
+			$userfunc_args->{$funcname} = [ @funcargs ];
+			# two unnecessary checks to produce someting more useful than "Parse error":
+			@cmdline or die "end of cmdline found where block expected\n";
+			$cmdline[0] =~ /^[\(\[\{]$/ or
+				die "unknown string $cmdline[0] found where block start expected\n";
+			push @out, [ 'SUB', $funcname ];
 		} elsif( $a =~ /^-(\w+)$/ and $a ne '-quote' ) {
 			my $name = $1;
 			if( $func0{$name} ) {
@@ -647,6 +666,12 @@ sub mklexer($) {
 	}
 }
 
+sub addblock($$) {
+	my ($name, $block) = @_;
+	$userfunc_blocks->{$name} = $block;
+	return [ 'EMPTY', '-sub', $name ];
+}
+
 my $grammar = <<'GRAMMAR';
 %%
 exp:	comma_exp ;
@@ -673,12 +698,16 @@ not_exp:
 atom:
 	FUNC
 	| OP2
+	| sub
 	| block
 	;
 block:
 	'(' exp ')'		{ [ 'BLOCK', $_[2] ] }
 	| '{' exp '}'		{ [ 'BLOCK', $_[2] ] }
 	| '[' exp ']'		{ [ 'BLOCK', $_[2] ] }
+	;
+sub:
+	SUB block		{ main::addblock( $_[1], $_[2] ) }
 	;
 %%
 GRAMMAR
@@ -798,6 +827,9 @@ sub evaltree($$) {
 		$list = eval_op2( $list, $op2name, $left, $right );
 		$previous_list = $list;
 		return $list;
+	} elsif( $op eq 'EMPTY' ) {
+		# $after_OR is not changed here
+		return $list;
 	} else {
 		die "unknown op: $op\n";
 	}
@@ -818,7 +850,7 @@ sub tree_has_actions($) {
 			return 1 if tree_has_actions($subtree);
 		}
 		return undef;
-	} elsif( $op eq 'OP2' ) {
+	} elsif( $op =~ /^(OP2|EMPTY)$/ ) {
 		return undef;
 	} elsif( $op eq 'FUNC' ) {
 		my $name = shift @copy;
@@ -842,7 +874,7 @@ sub main() {
 			die "Unknown option: $option\n";
 		}
 	}
-	my $tree = mktree( @preload, @ARGV );
+	my $tree = mktree( @preload, ",", @ARGV );
 	if( $dump_tree ) {
 		print Data::Dumper->Dump( [$tree], ["SyntaxTree"] );
 		exit 0;
