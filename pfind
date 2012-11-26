@@ -13,6 +13,14 @@ my $vars = {};
 my $previous_list;
 our $after_OR = undef;
 
+my @preload = qw(
+	%vsz := %statm::size
+	%rss := %statm::resident
+	%ppid := %stat::ppid
+	%comm := %stat::comm
+	%state := %stat::state
+);
+
 sub get_full_proc_list() {
 	return $state->{"all"} if exists $state->{"all"};
 	my $list = [];
@@ -207,20 +215,10 @@ my %sprintf_escapes = (
 	"\\"	=> "\\",
 );
 
-my %alias0 = (
-	"ppid"	=> [ qw/stat ppid/ ],
-	"comm"	=> [ qw/stat comm/ ],
-	"state"	=> [ qw/stat state/ ],
-);
-
 sub get_value_for_printf($$) {
 	my ($pid, $long_name) = @_;
 	my ($name, @args) = split /::/, $long_name;
-	if( $alias0{$name} ) {
-		die "alias $name takes no arguments\n" if @args;
-		my ($_name, @_args) = @{$alias0{$name}};
-		return cached_get( $pid, $_name, @_args );
-	} elsif( @args > 1 ) {
+	if( @args > 1 ) {
 		...
 	} elsif( 1 == @args ) {
 		return cached_get( $pid, $name, @args );
@@ -842,7 +840,7 @@ sub main() {
 			die "Unknown option: $option\n";
 		}
 	}
-	my $tree = mktree( @ARGV );
+	my $tree = mktree( @preload, @ARGV );
 	if( $dump_tree ) {
 		print Data::Dumper->Dump( [$tree], ["SyntaxTree"] );
 		exit 0;
