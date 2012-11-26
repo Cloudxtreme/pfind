@@ -221,14 +221,17 @@ sub get_value_for_printf($$) {
 	return cached_get( $pid, $name, @args );
 }
 
+sub is_quoted_arg($) {
+	my $arg = shift;
+	return( defined($arg) and ref($arg) and 'ARRAY' eq ref($arg)
+		and 'QUOTE' eq $arg->[0] and 2 == @$arg );
+}
+
 sub process_arg($;$) {
 	my ($arg, $list) = @_;
 	die $list unless not defined $list or 'ARRAY' eq ref $list;
 	my $quoted;
-	if( ref $arg ) {
-		'ARRAY' eq ref $arg or die;
-		'QUOTE' eq $arg->[0] or die;
-		2 == @$arg or die;
+	if( is_quoted_arg $arg ) {
 		$quoted = 1;
 		$arg = $arg->[1];
 	}
@@ -281,7 +284,13 @@ sub process_arg($;$) {
 				if( $vars->{$name} ) {
 					die "\%$name takes no args\n"
 						if defined $args and length $args;
-					unshift @rest, $vars->{$name};
+					my $value = $vars->{$name};
+					if( is_quoted_arg $value ) {
+						$value = $value->[1];
+						$out->{$_} .= $value for @$list;
+					} else {
+						unshift @rest, $vars->{$name};
+					}
 				} else {
 					foreach my $pid ( @$list ) {
 						$out->{$pid} .= get_value_for_printf( $pid, $exp );
@@ -506,18 +515,19 @@ sub assign($;$) {
 	my ($name, $value) = @_;
 	# we do not use process_arg(), this is probably not good
 	die "variable name cannot be quoted in :=\n" if ref $name;
-	die "variable value cannot be quoted in :=\n" if ref $value;
-	die unless defined $name; # undefined $value will remove variable
+	die unless defined $name;
+	# undefined $value will remove variable
+	die $value unless is_quoted_arg($value) or not ref $value;
 	$name =~ /^%(\w+)$/ or
 		die "first operand of := must be a variable name\n";
 	$name = $1; # drop initial '%'
 	$name =~ /^[a-zA-Z]/ or die "variable name must start with a letter\n";
 	# upper case names are reserved for global (not per-PID) variables
 	$name =~ /[A-Z]/ and die "variable name must be lower case\n";
-	if( exists $vars->{$name} ) {
-		die "variable \%$name already exists\n";
-	} elsif( not defined $value ) {
+	if( not defined $value ) {
 		delete $vars->{$name};
+	} elsif( exists $vars->{$name} ) {
+		die "variable \%$name already exists\n";
 	} else {
 		$vars->{$name} = $value;
 	}
