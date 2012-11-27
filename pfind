@@ -3,6 +3,8 @@
 use strict;
 use Data::Dumper;
 use Parse::Yapp;
+
+my $NOPID = -1; # pseudo-PID used when no real PID required/allowed
 die "pfind is only for linux\n" unless $^O eq "linux";
 use POSIX qw/sysconf _SC_PAGESIZE/;
 my $PAGESIZE = sysconf(_SC_PAGESIZE);
@@ -246,7 +248,7 @@ sub process_arg($;$) {
 		return( (defined $list) ? { map { $_ => $s } @$list } : $s );
 	}
 	die $arg unless defined $arg and not ref $arg;
-	my @outlist = ( defined($list) ? @$list : (-1) );
+	my @outlist = ( defined($list) ? @$list : ($NOPID) );
 	my $out = { map { $_ => "" } @outlist };
 	my @rest = ( $arg );
 	while( @rest ) {
@@ -287,7 +289,7 @@ sub process_arg($;$) {
 			die "bad string: $rest[0]\n"
 		}
 	}
-	return( (defined $list) ? $out : $out->{-1} );
+	return( (defined $list) ? $out : $out->{$NOPID} );
 }
 
 sub func_printf($$) {
