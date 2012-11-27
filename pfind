@@ -241,17 +241,10 @@ sub process_arg($;$) {
 	my ($arg, $list) = @_;
 	# we return hashref (if defined $list) or scalar (else)
 	die $list unless not defined $list or 'ARRAY' eq ref $list;
-
 	if( is_quoted_arg $arg ) {
-		$arg = $arg->[1];
-		if( defined $list ) {
-			my %out = map { $_ => $arg } @$list;
-			return \%out;
-		} else {
-			return $arg;
-		}
+		my $s = $arg->[1];
+		return( (defined $list) ? { map { $_ => $s } @$list } : $s );
 	}
-
 	die $arg unless defined $arg and not ref $arg;
 	my @outlist = ( defined($list) ? @$list : (-1) );
 	my $out = { map { $_ => "" } @outlist };
