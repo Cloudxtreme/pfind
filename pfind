@@ -515,7 +515,7 @@ my %op2 = ( # do not firget to edit %op2_match and %op2_num!
 );
 
 my %keywords = map { $_ => 1 } (
-	qw/ ( ) [ ] { } , ! -not -and -a -or -o -quote -sub /,
+	",", qw/ ( ) [ ] { } ! -not -and -a -or -o -quote -sub /,
 	keys(%op2),
 	map { "-$_" } (
 		keys(%func0), keys(%func1), keys(%func2), keys(%funcm),
