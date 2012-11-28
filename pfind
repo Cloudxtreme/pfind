@@ -30,6 +30,9 @@ my @preload = qw(
 	-sub -ps [ -exec ps uf {} + ]
 	-sub -pso %PS_FIELDS [ -exec ps -o %PS_FIELDS {} + ]
 
+	-sub -exe %exe_arg [ %exe == %exe_arg ]
+	-sub -cwd %cwd_arg [ %cwd == %cwd_arg ]
+
 	%vsz := %statm::size
 	%rss := %statm::resident
 
