@@ -4,7 +4,6 @@ use strict;
 use Data::Dumper;
 use Parse::Yapp;
 
-my $NOPID = -1; # pseudo-PID used when no real PID required/allowed
 die "pfind is only for linux\n" unless $^O eq "linux";
 use POSIX qw/sysconf _SC_PAGESIZE/;
 my $PAGESIZE = sysconf(_SC_PAGESIZE);
@@ -18,6 +17,9 @@ my $userfunc_blocks = {};
 # for things like -children/-parents/-descendants/-ancestors:
 my $previous_list;
 our $after_OR = undef;
+# $NOPID is a pseudo-PID used when no real PID required/allowed.
+# Also we cache global variables in $state->{$NOPID}
+my $NOPID = -1;
 
 my @preload = qw(
 	-sub -kill [ -signal KILL ]
@@ -168,11 +170,20 @@ sub get_status($) {
 	return $out;
 }
 
+sub get_UPTIME($) {
+	die unless $NOPID eq shift;
+	my $line = read_line_from_file "/proc/uptime";
+	$line =~ /^((\d+)(\.\d+)?)\s+((\d+)(\.\d+)?)\s*$/
+		or die "bad line from /proc/uptime: $line\n";
+	return $2; # the integer part of uptime
+}
+
 my %getters0 = (
 	"pid"	=> sub { return shift },
 	"exe"	=> sub { readlink("/proc/$_[0]/exe") // "" },
 	"cwd"	=> sub { readlink("/proc/$_[0]/cwd") // "" },
 	"root"	=> sub { readlink("/proc/$_[0]/root") // "" },
+	"UPTIME"	=> \&get_UPTIME,
 );
 my %getters1 = (
 	"stat"	=> \&get_stat,
@@ -182,6 +193,12 @@ my %getters1 = (
 
 sub cached_get($$;@) {
 	my ($pid, $name, @args) = @_;
+	die "bad variable name $name: must be all upper or all lower case\n"
+		if $name =~ /[A-Z]/ and $name =~ /[a-z]/;
+	die "no PID allowed for global vars\n"
+		if $name =~ /^[A-Z]/ and $pid ne $NOPID;
+	die "bad PID: $pid for $name\n"
+		if $name =~ /^[a-z]/ and not ( $pid =~ /^\d+$/ and $pid > 0 );
 	if( exists $getters0{$name} ) {
 		0 == @args or die "function $name takes no arguments\n";
 		$state->{$pid}{$name} //= $getters0{$name}->($pid);
