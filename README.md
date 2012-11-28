@@ -8,15 +8,21 @@ like that of `find` or `tcpdump`.
 
 ## USAGE EXAMPLES
 
-	pfind %exe == /bin/bash -or %exe == /bin/csh
+Print all shell processes:
+
+	pfind -exe /bin/bash -or -exe /bin/csh
+
+Same as previous:
+
+	pfind %exe == /bin/bash -o %exe == /bin/csh
 
 Pattern matching with `-m`:
 
-	pfind %exe == /usr/sbin/apache -and %cwd -m '/var/www*'
+	pfind -exe /usr/sbin/apache -and %cwd -m '/var/www*'
 
 Print something more than just a list of PIDs:
 
-	pfind [ %exe == /bin/rm -or %cwd == /etc ] -printf '%exe (pid=%pid) in %cwd\n'
+	pfind [ -exe /bin/rm -or -cwd /etc ] -printf '%exe (pid=%pid) in %cwd\n'
 
 Send `SIGHUP` to process with PID in `/var/run/apache.pid`,
 but only if it is really `/usr/bin/apache`:
@@ -25,29 +31,29 @@ but only if it is really `/usr/bin/apache`:
 
 Show process tree:
 
-	pfind [ -pidfile /var/run/apache.pid -and %exe == /usr/sbin/apache \
-		-or -descendants ] -ps jf
+	pfind [ -pidfile /var/run/apache.pid -and -exe /usr/sbin/apache \
+		-or -descendants ] -ps
 
 Kill the whole process tree:
 
-	pfind [ -pidfile /var/run/apache.pid -and %exe == /usr/sbin/apache \
+	pfind [ -pidfile /var/run/apache.pid -and -exe /usr/sbin/apache \
 		-or -descendants ] -kill
 
 Pretty print list of processes with big `utime`, sorted by `utime`:
 
-	pfind %stat::utime -gt 100 -sort -%stat::utime \
-		-print1 'UTIME \tPID \tCOMM\n' \
-		-printf '%stat::utime \t%pid \t%comm\n'
+	pfind %utime := %stat::utime %utime -gt 100 -sort -%utime \
+		-echo1 'UTIME \tPID \tCOMM' \
+		-echo '%utime \t%pid \t%comm'
 
 ## NOT YET IMPLEMENTED EXAMPLES
 
-`+` is to run `ps` command with all PIDs, not one by one:
+Show all processes of user `mike`:
 
-	pfind %user == mike -exec ps j {} +		
+	pfind -user mike -ps
 
-Same as previous:
+Same as previous (`+` is to run the command with all PIDs, not one by one):
 
-	pfind %user == mike -ps j
+	pfind %user == mike -exec ps uf {} +
 
 Interactive kill, `;` is to run `kill` for each PID one by one:
 
