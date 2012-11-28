@@ -222,7 +222,7 @@ my %getters1 = (
 	"stat"	=> \&get_stat,
 	"statm"	=> \&get_statm,
 	"status" => \&get_status,
-	"ENV"	=> sub { return { %ENV } },
+	"ENV"	=> sub { $NOPID eq $_[0] ?  { %ENV } : die },
 );
 
 sub cached_get($$;@) {
