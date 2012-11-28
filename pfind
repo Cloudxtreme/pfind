@@ -27,7 +27,7 @@ my @preload = qw(
 	-sub -term [ -signal TERM ]
 	-sub -hup  [ -signal HUP  ]
 
-	-sub -ps %PS_OPTIONS [ -exec ps %PS_OPTIONS {} + ]
+	-sub -ps [ -exec ps uf {} + ]
 	-sub -pso %PS_FIELDS [ -exec ps -o %PS_FIELDS {} + ]
 
 	%vsz := %statm::size
