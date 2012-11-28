@@ -27,6 +27,9 @@ my @preload = qw(
 	-sub -term [ -signal TERM ]
 	-sub -hup  [ -signal HUP  ]
 
+	-sub -ps %PS_OPTIONS [ -exec ps %PS_OPTIONS {} + ]
+	-sub -pso %PS_FIELDS [ -exec ps -o %PS_FIELDS {} + ]
+
 	%vsz := %statm::size
 	%rss := %statm::resident
 
@@ -493,8 +496,6 @@ my %func1 = (
 	"printf"	=> \&func_printf,
 	"print1"	=> \&func_print1,
 	"signal"	=> \&func_signal,
-	"ps"		=> sub { func_exec( shift, '+', 'ps', shift, '{}' ) },
-	"pso"		=> sub { func_exec( shift, '+', 'ps', '-o', shift, '{}' ) },
 	"pidfile"	=> \&func_pidfile,
 	"sort"		=> \&func_sort,
 	"head"		=> \&func_head,
