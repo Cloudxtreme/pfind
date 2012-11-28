@@ -14,6 +14,7 @@ my $userfunc_blocks = {};
 # for things like -children/-parents/-descendants/-ancestors:
 my $previous_list;
 our $after_OR = undef;
+my $action_triggered = undef;
 # $NOPID is a pseudo-PID used when no real PID required/allowed.
 # Also we cache global variables in $state->{$NOPID}
 my $NOPID = -1;
@@ -235,6 +236,7 @@ sub pattern2re($) {
 
 sub func_list($) {
 	my $list = shift;
+	$action_triggered = 1;
 	print "@$list\n" if @$list;
 	return $list;
 }
@@ -321,6 +323,7 @@ sub process_arg($;$) {
 
 sub func_printf($$) {
 	my ($list, $format) = @_;
+	$action_triggered = 1;
 	my $out = process_arg( $format, $list );
 	print join "", map { $out->{$_} } @$list;
 	return $list;
@@ -328,12 +331,14 @@ sub func_printf($$) {
 
 sub func_print1($$) {
 	my ($list, $string) = @_;
+	$action_triggered = 1;
 	print process_arg $string;
 	return $list;
 }
 
 sub func_signal($$) {
 	my ($list, $signal) = @_;
+	$action_triggered = 1;
 	$signal = process_arg $signal;
 	$signal = uc $signal;
 	return [ grep { kill $signal, $_ } @$list ];
@@ -397,6 +402,7 @@ sub func_pids($$@) {
 
 sub func_exec($$@) {
 	my ($checklist, $marker, @args) = @_;
+	$action_triggered = 1;
 	die "-exec takes at least two arguments\n" unless @args;
 	if( $marker eq '+' ) {
 		@args = map { process_arg $_ } @args;
@@ -876,31 +882,6 @@ sub evaltree($$) {
 	}
 }
 
-my %is_action = map { $_ => 1 } qw(
-	list printf print1
-	signal kill term hup
-	exec ps pso
-);
-sub tree_has_actions($);
-sub tree_has_actions($) {
-	my $tree = shift;
-	my @copy = @$tree;
-	my $op = shift @copy;;
-	if( $op =~ /^(BLOCK|NOT|COMMA|OR|AND)$/ ) {
-		foreach my $subtree (@copy) {
-			return 1 if tree_has_actions($subtree);
-		}
-		return undef;
-	} elsif( $op =~ /^(OP2|EMPTY)$/ ) {
-		return undef;
-	} elsif( $op eq 'FUNC' ) {
-		my $name = shift @copy;
-		return $is_action{$name};
-	} else {
-		die "unknown op: $op\n";
-	}
-}
-
 sub main() {
 	my ($quiet, $dump_tree); # options
 	while( @ARGV and $ARGV[0] =~ /^--/ ) {
@@ -923,9 +904,8 @@ sub main() {
 		print Data::Dumper->Dump( [$tree], ["SyntaxTree"] );
 		exit 0;
 	}
-	my $skip_print_list = $quiet || tree_has_actions($tree);
 	my $value = evaltree( get_full_proc_list(), $tree );
-	func_list($value) unless $skip_print_list;
+	func_list($value) unless $quiet or $action_triggered;
 	exit( @$value ? 0 : 1 );
 }
 
