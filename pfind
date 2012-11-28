@@ -19,6 +19,9 @@ our $after_OR = undef;
 my $NOPID = -1;
 
 my @preload = qw(
+	-sub -echo %str [ -printf %str\n ]
+	-sub -echo1 %STR [ -print1 %STR\n ]
+
 	-sub -kill [ -signal KILL ]
 	-sub -term [ -signal TERM ]
 	-sub -hup  [ -signal HUP  ]
