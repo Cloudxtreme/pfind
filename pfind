@@ -9,7 +9,9 @@ die "pfind is only for linux\n" unless $^O eq "linux";
 use POSIX qw/sysconf _SC_PAGESIZE/;
 my $PAGESIZE = sysconf(_SC_PAGESIZE);
 my $state = {};
-my $vars = {};
+my $vars = {
+	PAGESIZE	=> $PAGESIZE,
+};
 my $userfunc_args = {};
 my $userfunc_blocks = {};
 # a copy of previous expression's result
@@ -190,7 +192,7 @@ sub cached_get($$;@) {
 		$state->{$pid}{$name} //= $getters1{$name}->($pid);
 		return $state->{$pid}{$name}{$arg1} // "(undef)";
 	} else {
-		die "unknown function: $name";
+		die "unknown variable: $name\n";
 	}
 }
 
@@ -265,31 +267,35 @@ sub process_arg($;$) {
 			my $add = $sprintf_escapes{$1} // "\\$1";
 			$out->{$_} .= $add for @outlist;
 			$rest[0] = $2;
-		} elsif( $rest[0] =~ /^%(([a-z]\w*)(::[a-z]\w*)*)(.*)$/ ) {
+		} elsif( $rest[0] =~ /^%(([a-zA-Z]\w*)(::[a-zA-Z]\w*)*)(.*)$/ ) {
 			my ($exp, $name, $args) = ($1, $2, $3);
 			$rest[0] = $4;
-			if( not defined $list ) {
-				die "you cannot use variables here: $arg\n";
-			} elsif( exists $vars->{$name} ) {
+			my $var_is_local = ( $name =~ /^[a-z]/ );
+			die "you cannot use local variables here: $arg\n"
+				if $var_is_local and not defined $list;
+			if( exists $vars->{$name} ) {
 				die "\%$name takes no args\n"
 					if defined $args and length $args;
 				my $value = $vars->{$name};
 				if( is_quoted_arg $value ) {
 					$value = $value->[1];
-					$out->{$_} .= $value for @$list;
+					$out->{$_} .= $value for @outlist;
 				} else {
 					unshift @rest, $vars->{$name};
 				}
+			} elsif( $var_is_local ) {
+				$out->{$_} .= get_value_for_printf( $_, $exp )
+					foreach @outlist;
 			} else {
-				foreach my $pid ( @$list ) {
-					$out->{$pid} .= get_value_for_printf( $pid, $exp );
-				}
+				my $add = get_value_for_printf( $NOPID, $exp );
+				$out->{$_} .= $add foreach @outlist;
 			}
 		} else {
 			die "bad string: $rest[0]\n"
 		}
 	}
-	return( (defined $list) ? $out : $out->{$NOPID} );
+	$out = $out->{$NOPID} if not defined $list;
+	return $out;
 }
 
 sub func_printf($$) {
