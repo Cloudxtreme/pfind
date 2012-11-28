@@ -523,7 +523,8 @@ sub assign($;$) {
 	$name = $1; # drop initial '%'
 	$name =~ /^[a-zA-Z]/ or die "variable name must start with a letter\n";
 	# upper case names are reserved for global (not per-PID) variables
-	$name =~ /[A-Z]/ and die "variable name must be lower case\n";
+	die "bad variable name $name: must be all upper or all lower case\n"
+		if $name =~ /[A-Z]/ and $name =~ /[a-z]/;
 	if( not defined $value ) {
 		delete $vars->{$name};
 	} elsif( exists $vars->{$name} ) {
