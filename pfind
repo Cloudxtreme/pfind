@@ -612,7 +612,7 @@ sub tokenize(@) {
 			my @funcargs = ();
 			while( @cmdline and $cmdline[0] =~ /^%/ ) {
 				my $arg = shift @cmdline;
-				$arg =~ /^%([a-z][a-z01-9_]*)$/ or die "bad argument: $arg\n";
+				$arg =~ /^%[a-zA-Z]\w*$/ or die "bad argument: $arg\n";
 				push @funcargs, $arg;
 			}
 			$userfunc_args->{$funcname} = [ @funcargs ];
