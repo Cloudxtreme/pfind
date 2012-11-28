@@ -3,14 +3,11 @@
 use strict;
 use Data::Dumper;
 use Parse::Yapp;
+use POSIX qw/sysconf _SC_PAGESIZE/;
 
 die "pfind is only for linux\n" unless $^O eq "linux";
-use POSIX qw/sysconf _SC_PAGESIZE/;
-my $PAGESIZE = sysconf(_SC_PAGESIZE);
 my $state = {};
-my $vars = {
-	PAGESIZE	=> $PAGESIZE,
-};
+my $vars = {};
 my $userfunc_args = {};
 my $userfunc_blocks = {};
 # a copy of previous expression's result
@@ -85,6 +82,8 @@ sub read_line_from_file($) {
 	return $line;
 }
 
+sub cached_get($$;@);
+
 sub get_stat($) {
 	my $pid = shift;
 	my $line = join "", read_file "/proc/$pid/stat"; # comm may be multi-line
@@ -129,6 +128,7 @@ sub get_statm($) {
 	my $pid = shift;
 	my $out = parse_statmlike_file( "/proc/$pid/statm",
 		qw/size resident share text lib data dt/ );
+	my $PAGESIZE = cached_get( $NOPID, "PAGESIZE" );
 	$out->{$_} *= $PAGESIZE foreach keys %$out;
 	return $out;
 }
@@ -184,6 +184,7 @@ my %getters0 = (
 	"cwd"	=> sub { readlink("/proc/$_[0]/cwd") // "" },
 	"root"	=> sub { readlink("/proc/$_[0]/root") // "" },
 	"UPTIME"	=> \&get_UPTIME,
+	"PAGESIZE"	=> sub { $NOPID eq $_[0] ? sysconf(_SC_PAGESIZE) : die },
 );
 my %getters1 = (
 	"stat"	=> \&get_stat,
