@@ -31,19 +31,15 @@ but only if it is really `/usr/bin/apache`:
 
 Show process tree:
 
-	pfind [ -pidfile /var/run/apache.pid -and -exe /usr/sbin/apache \
-		-or -descendants ] -ps
+	pfind [ -pidfile /var/run/apache.pid -and -exe /usr/sbin/apache -or -descendants ] -ps
 
 Kill the whole process tree:
 
-	pfind [ -pidfile /var/run/apache.pid -and -exe /usr/sbin/apache \
-		-or -descendants ] -kill
+	pfind [ -pidfile /var/run/apache.pid -and -exe /usr/sbin/apache -or -descendants ] -kill
 
 Pretty print list of processes with big `utime`, sorted by `utime`:
 
-	pfind %utime := %stat::utime %utime -gt 100 -sort -%utime \
-		-echo1 'UTIME \tPID \tCOMM' \
-		-echo '%utime \t%pid \t%comm'
+	pfind %utime := %stat::utime %utime -gt 100 -sort -%utime -echo1 'UTIME \tPID \tCOMM' -echo '%utime \t%pid \t%comm'
 
 ## NOT YET IMPLEMENTED EXAMPLES
 
