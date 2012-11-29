@@ -307,7 +307,7 @@ sub process_arg($;$) {
 	}
 	die $arg unless defined $arg and not ref $arg;
 	my @outlist = ( defined($list) ? @$list : ($NOPID) );
-	my $n = 0; # field number for smart tabs
+	my $n = 0; # current field number for smart tabs
 	my $out = { map { $_ => [""] } @outlist };
 	my @rest = ( $arg );
 	while( @rest ) {
@@ -316,6 +316,10 @@ sub process_arg($;$) {
 		} elsif( $rest[0] =~ /^([^\\%]+)(.*)$/ ) {
 			$out->{$_}[$n] .= $1 for @outlist;
 			$rest[0] = $2;
+		} elsif( $rest[0] =~ /^\\T(.*)$/ ) {
+			$rest[0] = $1;
+			push @{$out->{$_}}, "" for @outlist;
+			++$n;
 		} elsif( $rest[0] =~ /^\\x([01-9a-f]{2})(.*)$/ ) {
 			my $add = chr hex $1;
 			$out->{$_}[$n] .= $add for @outlist;
@@ -349,6 +353,23 @@ sub process_arg($;$) {
 			}
 		} else {
 			die "bad string: $rest[0]\n"
+		}
+	}
+	if( $n ) {
+		my @maxlengths = (0) x ($n+1);
+		foreach my $pid (@outlist) {
+			foreach my $i ( 0 .. $n ) {
+				$out->{$pid}[$i] =~ s/^ +//;
+				$out->{$pid}[$i] =~ s/ +$//;
+				my $len = length $out->{$pid}[$i];
+				$maxlengths[$i] = $len if $len > $maxlengths[$i];
+			}
+		}
+		foreach my $pid (@outlist) {
+			foreach my $i ( 0 .. $n-1 ) {
+				my $addnum = $maxlengths[$i] - length $out->{$pid}[$i];
+				$out->{$pid}[$i] .= " " x $addnum;
+			}
 		}
 	}
 	$out->{$_} = join " ", @{$out->{$_}} for keys %$out;
