@@ -308,6 +308,7 @@ sub process_arg($;$) {
 	die $arg unless defined $arg and not ref $arg;
 	my @outlist = ( defined($list) ? @$list : ($NOPID) );
 	my $n = 0; # current field number for smart tabs
+	my %rightalign = ();
 	my $out = { map { $_ => [""] } @outlist };
 	my @rest = ( $arg );
 	while( @rest ) {
@@ -316,10 +317,11 @@ sub process_arg($;$) {
 		} elsif( $rest[0] =~ /^([^\\%]+)(.*)$/ ) {
 			$out->{$_}[$n] .= $1 for @outlist;
 			$rest[0] = $2;
-		} elsif( $rest[0] =~ /^\\T(.*)$/ ) {
-			$rest[0] = $1;
+		} elsif( $rest[0] =~ /^\\T(>)?(.*)$/ ) {
+			$rest[0] = $2;
 			push @{$out->{$_}}, "" for @outlist;
 			++$n;
+			$rightalign{$n} = 1 if $1;
 		} elsif( $rest[0] =~ /^\\x([01-9a-f]{2})(.*)$/ ) {
 			my $add = chr hex $1;
 			$out->{$_}[$n] .= $add for @outlist;
@@ -358,6 +360,7 @@ sub process_arg($;$) {
 	if( $n ) {
 		my @maxlengths = (0) x ($n+1);
 		foreach my $pid (@outlist) {
+			chomp $out->{$pid}[$n];
 			foreach my $i ( 0 .. $n ) {
 				$out->{$pid}[$i] =~ s/^ +//;
 				$out->{$pid}[$i] =~ s/ +$//;
@@ -366,10 +369,21 @@ sub process_arg($;$) {
 			}
 		}
 		foreach my $pid (@outlist) {
-			foreach my $i ( 0 .. $n-1 ) {
+			foreach my $i ( 0 .. $n ) {
+				last if $i == $n-1 and not $rightalign{$i};
 				my $addnum = $maxlengths[$i] - length $out->{$pid}[$i];
-				$out->{$pid}[$i] .= " " x $addnum;
+				my $add = " " x $addnum;
+				if( $rightalign{$i} ) {
+					$out->{$pid}[$i] = $add . $out->{$pid}[$i];
+				} else {
+					$out->{$pid}[$i] .= $add;
+				}
 			}
+			$out->{$pid}[$n] .= "\n";
+		}
+		if( 0 == $maxlengths[0] and not $rightalign{1} ) {
+			shift @{$out->{$_}} for @outlist;
+			--$n;
 		}
 	}
 	$out->{$_} = join " ", @{$out->{$_}} for keys %$out;
