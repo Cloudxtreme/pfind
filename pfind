@@ -277,7 +277,7 @@ sub func_list($) {
 }
 
 my %sprintf_escapes = (
-	# \T is smart tab, \x is for one byte in hexadecimal form
+	# \T is smart tab, \x is for hex, \0 is for oct
 	a	=> "\a",
 	b	=> "\b",
 	e	=> "\e",
@@ -285,7 +285,6 @@ my %sprintf_escapes = (
 	n	=> "\n",
 	r	=> "\r",
 	t	=> "\t",
-	0	=> "\0",
 	"\\"	=> "\\",
 	"-"	=> "", # empty string, works as a separator
 );
@@ -337,6 +336,12 @@ sub process_arg($;$) {
 			++$n;
 		} elsif( $rest[0] =~ /^\\x([01-9a-f]{2})(.*)$/ ) {
 			my $add = chr hex $1;
+			$out->{$_}[$n] .= $add for @outlist;
+			$rest[0] = $2;
+		} elsif( $rest[0] =~ /^\\0([0-7]*)(.*)$/ ) {
+			my $num = oct $1;
+			die "too big oct: \\0$1\n" if $num > 255;
+			my $add = chr $num;
 			$out->{$_}[$n] .= $add for @outlist;
 			$rest[0] = $2;
 		} elsif( $rest[0] =~ /^\\(.)(.*)$/ ) {
