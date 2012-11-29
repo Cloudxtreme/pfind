@@ -1,18 +1,14 @@
 TODO before v0.1:
 
--status (alias -veid = -status envID)
-compare "-stat state" with "-status State", maybe fix some other duplicates
-func2 -status
--pidlist 1 243 435 345 ';'
+update TODO from my local notes and convert it do .md
 
 TODO:
 
 (maybe) reduce [AND exp1 [AND exp2 exp3]] to [AND exp1 exp2 exp3] etc
 -xor (don't ask me why)
 %uptime -lt 50
--kernel-thread/-userspace (use VmSize in /status or PF_KTHREAD flag in /stat)
+PF_KTHREAD and other flags in /stat (some function to get the flags)
 threads
-common description of shorthands for both getters (-title = -status title) and print directives (%title = %status::title)
 remove check_list (just use get_full_proc_list() instead of "all")
 check that printf works with %status::title (when it's done)
 check what happens if we run printf on non-existent pids
@@ -23,23 +19,20 @@ help, README.md and POD
 	or just use pfind ... -confirm "kill %pid %exe" (-a) -kill/-exec ...
 -opened, -reads, -writes, -locks
 printf: %{func2{arbitrary arg with spaces and slashes}} (not really needed yet since -pidfile is not for printf)
-per-process AND global vars: %::prefix := "some string" -printf "%::prefix %pid\n"; find something better than %::a;
-	also we need something like %::uptime (preset readonly global vars)
 (maybe) parse functions in parser, not just in tokenizer
 see "ps -o" for more printf directives
 do not add to many functions, prefer things like %exe -m '*bash', %cwd =~ '^a', %runtime -lt %{interval{5days}}, %vsz -gt %{size{5m}} etc
--!m shorthand: "%exe -!m '*bash'" is "-not %exe -m '*bash'" (this seems to be the only useful case for such shorthand)
--lt/-gt/-eq/-ne for numeric comparison, ==/!= for strings, =~/!~ for perlre, := for assignment, = is never used
-all strings must be formatted by default, so there's no need for -sprintf; use -quote <string> if you need to skip formatting
 (maybe) some network checks
 -fprintf
 (maybe) something like -interactive [ -hup ] and -sort %pid [ ... ] in grammar instead of using -and and -or
 %exec{ps -o smth %pid}
-smart tab (and header) for printf: -printf '%header{VEID}%status::envID %t%pid %t%cmdline' ('%t%pid' = '%header{PID}%pid')
 -user/-group/-uid/-gid and %user etc
 %human{%vsz}
 %{%vsz-%rss}
 
+KEEP:
+
+-lt/-gt/-eq/-ne for numeric comparison, ==/!= for strings, =~/!~ for perlre, := for assignment, = is never used
 
 WONT:
 -use glob [ exp ] | -use perlre [ exp ] - WON'T, instead make globbing the default for functions and use "%a =~ re" for perlre
