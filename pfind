@@ -551,8 +551,15 @@ sub func_pidfile($$) {
 
 sub func_sort($$) {
 	my ($checklist, $value) = @_;
-	$value =~ /%/ or die "-sort expects unquoted variable argument\n";
+	$value =~ /%[a-z]/ or die "-sort expects unquoted local variable argument\n";
 	my $hashed_value = process_arg( $value, $checklist );
+	foreach my $pid ( @$checklist ) {
+		if( not defined $hashed_value->{$pid} ) {
+			die "undefined value for $pid in -sort\n";
+		} elsif( $hashed_value->{$pid} !~ /^-?\d+$/ ) {
+			die "non-numeric value for $pid in -sort: $hashed_value->{$pid}\n";
+		}
+	}
 	return [ sort {
 		$hashed_value->{$a} <=> $hashed_value->{$b}
 	} @$checklist ];
