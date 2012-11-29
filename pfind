@@ -398,7 +398,7 @@ sub process_arg($;$) {
 			--$n;
 		}
 	}
-	$out->{$_} = join " ", @{$out->{$_}} for keys %$out;
+	$out->{$_} = join "  ", @{$out->{$_}} for keys %$out;
 	$smarttabheader = delete $out->{$HEADERPID};
 	$out = $out->{$NOPID} if not defined $list;
 	return $out;
