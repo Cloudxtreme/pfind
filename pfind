@@ -280,12 +280,14 @@ my %sprintf_escapes = (
 	# \T is smart tab, \x is for one byte in hexadecimal form
 	a	=> "\a",
 	b	=> "\b",
+	e	=> "\e",
 	f	=> "\f",
 	n	=> "\n",
 	r	=> "\r",
 	t	=> "\t",
 	0	=> "\0",
 	"\\"	=> "\\",
+	"-"	=> "", # empty string, works as a separator
 );
 
 sub get_value_for_printf($$) {
