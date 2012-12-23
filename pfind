@@ -240,11 +240,11 @@ sub cached_get($$;@) {
 	die "bad PID: $pid for $name\n"
 		if $name =~ /^[a-z]/ and not ( $pid =~ /^\d+$/ and $pid > 0 );
 	if( exists $getters0{$name} ) {
-		0 == @args or die "function $name takes no arguments\n";
+		0 == @args or die "command $name takes no arguments\n";
 		$state->{$pid}{$name} //= $getters0{$name}->($pid);
 		return $state->{$pid}{$name} // "(undef)";
 	} elsif( exists $getters1{$name} ) {
-		1 == @args or die "function $name takes one argument\n";
+		1 == @args or die "command $name takes one argument\n";
 		my ($arg1) = @args;
 		$state->{$pid}{$name} //= $getters1{$name}->($pid);
 		return $state->{$pid}{$name}{$arg1} // "(undef)";
@@ -603,7 +603,7 @@ my %cmd1 = (
 	"tail"		=> \&cmd_tail,
 );
 my %cmd2 = (
-	# reserved for user-defined functions
+	# reserved for user-defined commands
 );
 my %cmdm = (
 	"pids"		=> \&cmd_pids,
@@ -825,21 +825,21 @@ sub mktree(@) {
 sub evalcmd($$@) {
 	my ($list, $name, @args) = @_;
 	if( $cmd0{$name} ) {
-		die "function $name takes no args\n" if @args;
+		die "command $name takes no args\n" if @args;
 		return $cmd0{$name}->($list);
 	} elsif( $cmd1{$name} ) {
-		die "function $name takes 1 arg\n" unless 1 == @args;
+		die "command $name takes 1 arg\n" unless 1 == @args;
 		my ($arg1) = (@args);
 		return $cmd1{$name}->($list, $arg1);
 	} elsif( $cmd2{$name} ) {
-		die "function $name takes 2 args\n" unless 2 == @args;
+		die "command $name takes 2 args\n" unless 2 == @args;
 		my ($arg1, $arg2) = (@args);
 		return $cmd2{$name}->($list, $arg1, $arg2);
 	} elsif( $cmdm{$name} ) {
 		return $cmdm{$name}->($list, @args);
 	} elsif( $usercmd_args->{$name} ) {
 		my $num = scalar @{$usercmd_args->{$name}};
-		die "user defined function -$name takes $num arguments\n"
+		die "user defined command -$name takes $num arguments\n"
 			unless @args == $num;
 		foreach my $i ( 0 .. $num-1 ) {
 			assign( $usercmd_args->{$name}[$i], $args[$i] );
@@ -850,7 +850,7 @@ sub evalcmd($$@) {
 		}
 		return $out;
 	} else {
-		die "unknown function: $name\n";
+		die "unknown command: $name\n";
 	}
 }
 
@@ -932,7 +932,7 @@ sub evaltree($$) {
 		return $list;
 	} elsif( $op eq 'CMD' ) {
 		# $after_OR is not changed here
-		@tree or die "no function name\n";
+		@tree or die "no command name\n";
 		my $name = shift @tree;
 		$list = evalcmd( $list, $name, @tree );
 		$previous_list = $list;
