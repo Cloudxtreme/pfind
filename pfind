@@ -763,12 +763,12 @@ atom:
 	| block
 	;
 namedfilter_exp:
-	CMDNAME strings			{ [ 'FUNC', $_[1], @{$_[2]} ] }
-	| CMDNAME strings '{}' strings	{ [ 'FUNC', $_[1], @{$_[2]}, '{}', @{$_[4]} ] }
-	| CMDNAME strings '+'		{ [ 'FUNC', $_[1], '+', @{$_[2]} ] }
-	| CMDNAME strings '{}' strings '+'	{ [ 'FUNC', $_[1], '+', @{$_[2]}, '{}', @{$_[4]} ] }
-	| CMDNAME strings ';'		{ [ 'FUNC', $_[1], ';', @{$_[2]} ] }
-	| CMDNAME strings '{}' strings ';'	{ [ 'FUNC', $_[1], ';', @{$_[2]}, '{}', @{$_[4]} ] }
+	CMDNAME strings			{ [ 'CMD', $_[1], @{$_[2]} ] }
+	| CMDNAME strings '{}' strings	{ [ 'CMD', $_[1], @{$_[2]}, '{}', @{$_[4]} ] }
+	| CMDNAME strings '+'		{ [ 'CMD', $_[1], '+', @{$_[2]} ] }
+	| CMDNAME strings '{}' strings '+'	{ [ 'CMD', $_[1], '+', @{$_[2]}, '{}', @{$_[4]} ] }
+	| CMDNAME strings ';'		{ [ 'CMD', $_[1], ';', @{$_[2]} ] }
+	| CMDNAME strings '{}' strings ';'	{ [ 'CMD', $_[1], ';', @{$_[2]}, '{}', @{$_[4]} ] }
 	;
 strings:
 	/* empty */		{ [] }
@@ -930,7 +930,7 @@ sub evaltree($$) {
 		$userfunc_blocks->{$name} = $block;
 		$userfunc_args->{$name} = $strings;
 		return $list;
-	} elsif( $op eq 'FUNC' ) {
+	} elsif( $op eq 'CMD' ) {
 		# $after_OR is not changed here
 		@tree or die "no function name\n";
 		my $name = shift @tree;
