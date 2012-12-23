@@ -627,13 +627,13 @@ my %op2 = ( # do not firget to edit %op2_match and %op2_num!
 	":="	=> sub { die ":= is not a filter like other op2\n" },
 );
 
-my %funckeywords = map { "-" . $_ => 1 } ( 
+my %cmdkeywords = map { "-" . $_ => 1 } ( 
 		keys(%cmd0), keys(%cmd1), keys(%cmd2), keys(%cmdm),
 );
 my %keywords = map { $_ => 1 } (
 	",", qw/ ( ) [ ] { } {} ; + ! -not -and -a -or -o -quote -sub /,
 	keys(%op2),
-	keys(%funckeywords),
+	keys(%cmdkeywords),
 );
 
 # match operations have constant second argument:
@@ -709,7 +709,7 @@ sub mklexer(@) {
 			@cmdline or die "unexpected end of cmdline after -quote\n";
 			return ( 'STRING', [ 'QUOTE', shift(@cmdline) ] );
 		} elsif( $keywords{$current} ) {
-			if( $funckeywords{$current} ) {
+			if( $cmdkeywords{$current} ) {
 				$current =~ /^-(\w+)$/ or die;
 				return ( 'CMDNAME', $1 );
 			} else {
