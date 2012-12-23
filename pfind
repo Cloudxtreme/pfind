@@ -711,12 +711,12 @@ sub mklexer(@) {
 		} elsif( $keywords{$current} ) {
 			if( $funckeywords{$current} ) {
 				$current =~ /^-(\w+)$/ or die;
-				return ( 'FILTERNAME', $1 );
+				return ( 'CMDNAME', $1 );
 			} else {
 				return ( $current, $current );
 			}
 		} elsif( $current =~ /^-(\w+)$/ ) {
-			return ( 'FILTERNAME', $1 );
+			return ( 'CMDNAME', $1 );
 		} else {
 			return ( 'STRING', $current );
 		}
@@ -763,12 +763,12 @@ atom:
 	| block
 	;
 namedfilter_exp:
-	FILTERNAME strings			{ [ 'FUNC', $_[1], @{$_[2]} ] }
-	| FILTERNAME strings '{}' strings	{ [ 'FUNC', $_[1], @{$_[2]}, '{}', @{$_[4]} ] }
-	| FILTERNAME strings '+'		{ [ 'FUNC', $_[1], '+', @{$_[2]} ] }
-	| FILTERNAME strings '{}' strings '+'	{ [ 'FUNC', $_[1], '+', @{$_[2]}, '{}', @{$_[4]} ] }
-	| FILTERNAME strings ';'		{ [ 'FUNC', $_[1], ';', @{$_[2]} ] }
-	| FILTERNAME strings '{}' strings ';'	{ [ 'FUNC', $_[1], ';', @{$_[2]}, '{}', @{$_[4]} ] }
+	CMDNAME strings			{ [ 'FUNC', $_[1], @{$_[2]} ] }
+	| CMDNAME strings '{}' strings	{ [ 'FUNC', $_[1], @{$_[2]}, '{}', @{$_[4]} ] }
+	| CMDNAME strings '+'		{ [ 'FUNC', $_[1], '+', @{$_[2]} ] }
+	| CMDNAME strings '{}' strings '+'	{ [ 'FUNC', $_[1], '+', @{$_[2]}, '{}', @{$_[4]} ] }
+	| CMDNAME strings ';'		{ [ 'FUNC', $_[1], ';', @{$_[2]} ] }
+	| CMDNAME strings '{}' strings ';'	{ [ 'FUNC', $_[1], ';', @{$_[2]}, '{}', @{$_[4]} ] }
 	;
 strings:
 	/* empty */		{ [] }
@@ -800,7 +800,7 @@ block:
 	| '[' exp ']'		{ [ 'BLOCK', $_[2] ] }
 	;
 sub_definition:
-	'-sub' FILTERNAME strings block	{ [ 'SUB', $_[2], $_[3], $_[4] ] }
+	'-sub' CMDNAME strings block	{ [ 'SUB', $_[2], $_[3], $_[4] ] }
 	;
 %%
 GRAMMAR
