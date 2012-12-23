@@ -30,8 +30,8 @@ my @preload = qw(
 	-sub -term [ -signal TERM ]
 	-sub -hup  [ -signal HUP  ]
 
-	-sub -ps [ -exec ps uf {} + ]
-	-sub -pso %PS_FIELDS [ -exec ps -o\- %PS_FIELDS {} + ]
+	-sub -ps [ -exec ps uf {} ]
+	-sub -pso %PS_FIELDS [ -exec ps -o\- %PS_FIELDS {} ]
 
 	-sub -exe %exe_arg [ %exe == %exe_arg ]
 	-sub -cwd %cwd_arg [ %cwd == %cwd_arg ]
@@ -488,9 +488,8 @@ sub inc_parent($$) {
 }
 
 sub cmd_pids($$@) {
-	my ($checklist, $marker, @pids) = @_;
+	my ($checklist, @pids) = @_;
 	@pids = map { process_arg $_ } @pids;
-	die "-pids takes only ';' end marker\n" unless $marker eq ';';
 	die "-pids takes at least one argument\n" unless @pids;
 	/^\d+$/ or die "non-numeric pid in -pids: $_\n" for @pids;
 	my %ok = map { $_ => 1 } @$checklist;
@@ -498,7 +497,7 @@ sub cmd_pids($$@) {
 }
 
 sub cmd_exec($$@) {
-	my ($checklist, $marker, @args) = @_;
+	my ($checklist, @args) = @_;
 	$action_triggered = 1;
 	die "-exec takes at least two arguments\n" unless @args;
 	my $braces_index;
@@ -633,7 +632,7 @@ my %cmdkeywords = map { "-" . $_ => 1 } (
 		keys(%cmd0), keys(%cmd1), keys(%cmd2), keys(%cmdm),
 );
 my %keywords = map { $_ => 1 } (
-	",", qw/ ( ) [ ] { } {} ; + ! -not -and -a -or -o -quote -sub /,
+	",", qw/ ( ) [ ] { } {} ; ! -not -and -a -or -o -quote -sub /,
 	keys(%op2),
 	keys(%cmdkeywords),
 );
@@ -766,7 +765,7 @@ and_exp:
 	| not_exp and and_exp	{ [ 'AND', $_[1], $_[3] ] }
 	;
 and:
-	# empty
+	/* empty */
 	| '-a'
 	| '-and'
 	;
@@ -785,12 +784,12 @@ atom:
 	| block
 	;
 command_exp:
-	CMDNAME strings			{ [ 'CMD', $_[1], @{$_[2]} ] }
-	| CMDNAME strings '{}' strings	{ [ 'CMD', $_[1], @{$_[2]}, '{}', @{$_[4]} ] }
-	| CMDNAME strings '+'		{ [ 'CMD', $_[1], '+', @{$_[2]} ] }
-	| CMDNAME strings '{}' strings '+'	{ [ 'CMD', $_[1], '+', @{$_[2]}, '{}', @{$_[4]} ] }
-	| CMDNAME strings ';'		{ [ 'CMD', $_[1], ';', @{$_[2]} ] }
-	| CMDNAME strings '{}' strings ';'	{ [ 'CMD', $_[1], ';', @{$_[2]}, '{}', @{$_[4]} ] }
+	CMDNAME strings cmd_end			{ [ 'CMD', $_[1], @{$_[2]} ] }
+	| CMDNAME strings '{}' strings cmd_end	{ [ 'CMD', $_[1], @{$_[2]}, '{}', @{$_[4]} ] }
+	;
+cmd_end:
+	/* empty */
+	| ';'
 	;
 strings:
 	/* empty */		{ [] }
