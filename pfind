@@ -269,7 +269,7 @@ sub pattern2re($) {
 	return $re;
 }
 
-sub func_list($) {
+sub cmd_list($) {
 	my $list = shift;
 	$action_triggered = 1;
 	print "@$list\n" if @$list;
@@ -411,7 +411,7 @@ sub process_arg($;$) {
 	return $out;
 }
 
-sub func_printf($$) {
+sub cmd_printf($$) {
 	my ($list, $format) = @_;
 	$action_triggered = 1;
 	$smarttabheader = undef;
@@ -422,7 +422,7 @@ sub func_printf($$) {
 	return $list;
 }
 
-sub func_print1($$) {
+sub cmd_print1($$) {
 	my ($list, $string) = @_;
 	$action_triggered = 1;
 	$smarttabheader = undef;
@@ -433,7 +433,7 @@ sub func_print1($$) {
 	return $list;
 }
 
-sub func_signal($$) {
+sub cmd_signal($$) {
 	my ($list, $signal) = @_;
 	$action_triggered = 1;
 	$signal = process_arg $signal;
@@ -441,7 +441,7 @@ sub func_signal($$) {
 	return [ grep { kill $signal, $_ } @$list ];
 }
 
-sub func_additions($$$$) {
+sub cmd_additions($$$$) {
 	my ($checklist, $name, $inc, $once) = @_;
 	$after_OR or die "-$name must come after -or\n";
 	my @out = ();
@@ -487,7 +487,7 @@ sub inc_parent($$) {
 	return @addition;
 }
 
-sub func_pids($$@) {
+sub cmd_pids($$@) {
 	my ($checklist, $marker, @pids) = @_;
 	@pids = map { process_arg $_ } @pids;
 	die "-pids takes only ';' end marker\n" unless $marker eq ';';
@@ -497,7 +497,7 @@ sub func_pids($$@) {
 	return [ grep { $ok{$_} } @pids ];
 }
 
-sub func_exec($$@) {
+sub cmd_exec($$@) {
 	my ($checklist, $marker, @args) = @_;
 	$action_triggered = 1;
 	die "-exec takes at least two arguments\n" unless @args;
@@ -538,7 +538,7 @@ sub func_exec($$@) {
 	}
 }
 
-sub func_pidfile($$) {
+sub cmd_pidfile($$) {
 	my ($checklist, $pidfile) = @_;
 	$pidfile = process_arg $pidfile;
 	my $pid = read_line_from_file $pidfile;
@@ -549,7 +549,7 @@ sub func_pidfile($$) {
 	return [ $pid ];
 }
 
-sub func_sort($$) {
+sub cmd_sort($$) {
 	my ($checklist, $value) = @_;
 	$value =~ /%[a-z]/ or die "-sort expects unquoted local variable argument\n";
 	my $hashed_value = process_arg( $value, $checklist );
@@ -565,7 +565,7 @@ sub func_sort($$) {
 	} @$checklist ];
 }
 
-sub func_head($$) {
+sub cmd_head($$) {
 	my ($checklist, $num) = @_;
 	$num = process_arg $num;
 	die "-head expects positive numeric argument\n"
@@ -574,7 +574,7 @@ sub func_head($$) {
 	$num = $total if $num > $total;
 	return [ @$checklist[0..$num-1] ];
 }
-sub func_tail($$) {
+sub cmd_tail($$) {
 	my ($checklist, $num) = @_;
 	$num = process_arg $num;
 	die "-tail expects positive numeric argument\n"
@@ -587,27 +587,27 @@ sub func_tail($$) {
 my %cmd0 = (
 	"true"	=> sub { return $_[0] },
 	"false"	=> sub { return [] },
-	"list"	=> \&func_list,
-	"children"	=> sub { func_additions( shift, "children", \&inc_children, 1 ) },
-	"descendants"	=> sub { func_additions shift, "descendants", \&inc_children, undef },
-	"parents"	=> sub { func_additions( shift, "parents", \&inc_parent, 1 ) },
-	"ancestors"	=> sub { func_additions shift, "ancestors", \&inc_parent, undef },
+	"list"	=> \&cmd_list,
+	"children"	=> sub { cmd_additions( shift, "children", \&inc_children, 1 ) },
+	"descendants"	=> sub { cmd_additions shift, "descendants", \&inc_children, undef },
+	"parents"	=> sub { cmd_additions( shift, "parents", \&inc_parent, 1 ) },
+	"ancestors"	=> sub { cmd_additions shift, "ancestors", \&inc_parent, undef },
 );
 my %cmd1 = (
-	"printf"	=> \&func_printf,
-	"print1"	=> \&func_print1,
-	"signal"	=> \&func_signal,
-	"pidfile"	=> \&func_pidfile,
-	"sort"		=> \&func_sort,
-	"head"		=> \&func_head,
-	"tail"		=> \&func_tail,
+	"printf"	=> \&cmd_printf,
+	"print1"	=> \&cmd_print1,
+	"signal"	=> \&cmd_signal,
+	"pidfile"	=> \&cmd_pidfile,
+	"sort"		=> \&cmd_sort,
+	"head"		=> \&cmd_head,
+	"tail"		=> \&cmd_tail,
 );
 my %cmd2 = (
 	# reserved for user-defined functions
 );
 my %cmdm = (
-	"pids"		=> \&func_pids,
-	"exec"		=> \&func_exec,
+	"pids"		=> \&cmd_pids,
+	"exec"		=> \&cmd_exec,
 );
 my %op2 = ( # do not firget to edit %op2_match and %op2_num!
 	"-m"	=> sub { $_[0] =~ pattern2re $_[1] },
@@ -975,7 +975,7 @@ sub main() {
 		exit 0;
 	}
 	my $value = evaltree( get_full_proc_list(), $tree );
-	func_list($value) unless $quiet or $action_triggered;
+	cmd_list($value) unless $quiet or $action_triggered;
 	exit( @$value ? 0 : 1 );
 }
 
