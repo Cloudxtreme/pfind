@@ -501,30 +501,34 @@ sub cmd_exec($$@) {
 	my ($checklist, $marker, @args) = @_;
 	$action_triggered = 1;
 	die "-exec takes at least two arguments\n" unless @args;
-	if( $marker eq '+' ) {
-		@args = map { process_arg $_ } @args;
-		my @cmdline = ( shift @args );
-		my $count = 0;
-		foreach( @args ) {
-			if( $_ eq '{}' ) {
-				push @cmdline, @$checklist;
-				++$count;
+	my $braces_index;
+	foreach my $i ( 0 .. $#args ) {
+		if( not is_quoted_arg($args[$i]) ) {
+			die unless defined $args[$i];
+			die if ref $args[$i];
+			next unless '{}' eq $args[$i];
+			if( defined $braces_index ) {
+				die "-exec expects no more than one '{}' argument\n";
 			} else {
-				push @cmdline, $_;
+				$braces_index = $i;
 			}
 		}
-		1 == $count or die "-exec ... '+' expects exactly one '{}' argument\n";
+	}
+	if( defined $braces_index ) {
+		$braces_index or die "'{}' cannot be the first argument of -exec\n";
+		my @cmdline = (
+			map { process_arg $_ } @args[0 .. $braces_index-1],
+			@$checklist,
+			map { process_arg $_ } @args[$braces_index+1 .. $#args],
+		);
 		system( @cmdline );
 		return $checklist;
-	} elsif( $marker eq ';' ) {
+	} else {
 		my $cmd = process_arg shift @args;
 		my $ok;
-		/%/ and $ok = 1 for @args;
-		$ok or die "-exec ... ';' expects at least one variable argument\n";
-		my @hashed_args = map {
-			s/^{}$/%pid/;
-			process_arg($_, $checklist)
-		} @args;
+		/%/ and $ok = 1 for @args; # TODO: replace this with some var_triggered
+		$ok or die "-exec expects at least one '{}' or variable argument\n";
+		my @hashed_args = map { process_arg($_, $checklist) } @args;
 		my @out = ();
 		foreach my $pid ( @$checklist ) {
 			my @cmdline = ($cmd);
@@ -533,8 +537,6 @@ sub cmd_exec($$@) {
 			push @out, $pid unless $? >> 8;
 		}
 		return [ @out ];
-	} else {
-		die;
 	}
 }
 
