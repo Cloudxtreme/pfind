@@ -822,7 +822,7 @@ sub mktree(@) {
 	);
 }
 
-sub evalfunc($$@) {
+sub evalcmd($$@) {
 	my ($list, $name, @args) = @_;
 	if( $cmd0{$name} ) {
 		die "function $name takes no args\n" if @args;
@@ -934,7 +934,7 @@ sub evaltree($$) {
 		# $after_OR is not changed here
 		@tree or die "no function name\n";
 		my $name = shift @tree;
-		$list = evalfunc( $list, $name, @tree );
+		$list = evalcmd( $list, $name, @tree );
 		$previous_list = $list;
 		return $list;
 	} elsif( $op eq 'OP2' ) {
