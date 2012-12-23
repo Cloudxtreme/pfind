@@ -700,7 +700,8 @@ sub eval_op2($$$$) {
 sub mklexer(@) {
 	my @cmdline = @_;
 	@cmdline or die "mklexer: empty cmdline\n";
-	return sub {
+	my @last = ();
+	my $prelexer = sub {
 		return ( '', undef ) if not @cmdline;
 		my $current = shift @cmdline;
 		if( $current eq '=' ) {
@@ -721,6 +722,25 @@ sub mklexer(@) {
 			return ( 'STRING', $current );
 		}
 	};
+	my $lexer = sub {
+		my ($a, $b) = $prelexer->();
+		if( not defined $b ) {
+			die unless defined($a) and '' eq $a;
+			push @last, "(end of cmdline)";
+		} else {
+			push @last, $b;
+		}
+		shift @last while @last > 5;
+		return $a, $b;
+	};
+	my $error_sub = sub {
+		die unless @last;
+		my @l = @last;
+		my $top = pop @l;
+		@l = ( @l, "HERE->>", $top, "<<-HERE" );
+		die sprintf "Unexpected $top: ... %s\n", join " ", @l;
+	};
+	return $lexer, $error_sub;
 }
 
 my $grammar = <<'GRAMMAR';
@@ -816,9 +836,10 @@ sub mktree(@) {
 	die $@ if $@;
 
 	my $parser = new grammar_pfind;
+	my ($lexer, $error_sub) = mklexer(@cmdline);
 	return $parser->YYParse(
-		yylex => mklexer( @cmdline ),
-		yyerror => sub{ die "Parse error\n" },
+		yylex => $lexer,
+		yyerror => $error_sub,
 	);
 }
 
