@@ -584,7 +584,7 @@ sub func_tail($$) {
 	return [ @$checklist[$total-$num .. $total-1] ];
 }
 
-my %func0 = (
+my %cmd0 = (
 	"true"	=> sub { return $_[0] },
 	"false"	=> sub { return [] },
 	"list"	=> \&func_list,
@@ -593,7 +593,7 @@ my %func0 = (
 	"parents"	=> sub { func_additions( shift, "parents", \&inc_parent, 1 ) },
 	"ancestors"	=> sub { func_additions shift, "ancestors", \&inc_parent, undef },
 );
-my %func1 = (
+my %cmd1 = (
 	"printf"	=> \&func_printf,
 	"print1"	=> \&func_print1,
 	"signal"	=> \&func_signal,
@@ -602,10 +602,10 @@ my %func1 = (
 	"head"		=> \&func_head,
 	"tail"		=> \&func_tail,
 );
-my %func2 = (
+my %cmd2 = (
 	# reserved for user-defined functions
 );
-my %funcm = (
+my %cmdm = (
 	"pids"		=> \&func_pids,
 	"exec"		=> \&func_exec,
 );
@@ -628,7 +628,7 @@ my %op2 = ( # do not firget to edit %op2_match and %op2_num!
 );
 
 my %funckeywords = map { "-" . $_ => 1 } ( 
-		keys(%func0), keys(%func1), keys(%func2), keys(%funcm),
+		keys(%cmd0), keys(%cmd1), keys(%cmd2), keys(%cmdm),
 );
 my %keywords = map { $_ => 1 } (
 	",", qw/ ( ) [ ] { } {} ; + ! -not -and -a -or -o -quote -sub /,
@@ -824,19 +824,19 @@ sub mktree(@) {
 
 sub evalfunc($$@) {
 	my ($list, $name, @args) = @_;
-	if( $func0{$name} ) {
+	if( $cmd0{$name} ) {
 		die "function $name takes no args\n" if @args;
-		return $func0{$name}->($list);
-	} elsif( $func1{$name} ) {
+		return $cmd0{$name}->($list);
+	} elsif( $cmd1{$name} ) {
 		die "function $name takes 1 arg\n" unless 1 == @args;
 		my ($arg1) = (@args);
-		return $func1{$name}->($list, $arg1);
-	} elsif( $func2{$name} ) {
+		return $cmd1{$name}->($list, $arg1);
+	} elsif( $cmd2{$name} ) {
 		die "function $name takes 2 args\n" unless 2 == @args;
 		my ($arg1, $arg2) = (@args);
-		return $func2{$name}->($list, $arg1, $arg2);
-	} elsif( $funcm{$name} ) {
-		return $funcm{$name}->($list, @args);
+		return $cmd2{$name}->($list, $arg1, $arg2);
+	} elsif( $cmdm{$name} ) {
+		return $cmdm{$name}->($list, @args);
 	} elsif( $userfunc_args->{$name} ) {
 		my $num = scalar @{$userfunc_args->{$name}};
 		die "user defined function -$name takes $num arguments\n"
