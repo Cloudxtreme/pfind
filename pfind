@@ -8,8 +8,8 @@ use POSIX qw/uname sysconf _SC_PAGESIZE/;
 die "pfind is only for linux\n" unless $^O eq "linux";
 my $state = {};
 my $vars = {};
-my $userfunc_args = {};
-my $userfunc_blocks = {};
+my $usercmd_args = {};
+my $usercmd_blocks = {};
 # a copy of previous expression's result
 # for things like -children/-parents/-descendants/-ancestors:
 my $previous_list;
@@ -837,16 +837,16 @@ sub evalfunc($$@) {
 		return $cmd2{$name}->($list, $arg1, $arg2);
 	} elsif( $cmdm{$name} ) {
 		return $cmdm{$name}->($list, @args);
-	} elsif( $userfunc_args->{$name} ) {
-		my $num = scalar @{$userfunc_args->{$name}};
+	} elsif( $usercmd_args->{$name} ) {
+		my $num = scalar @{$usercmd_args->{$name}};
 		die "user defined function -$name takes $num arguments\n"
 			unless @args == $num;
 		foreach my $i ( 0 .. $num-1 ) {
-			assign( $userfunc_args->{$name}[$i], $args[$i] );
+			assign( $usercmd_args->{$name}[$i], $args[$i] );
 		}
-		my $out = evaltree( $list, $userfunc_blocks->{$name} );
+		my $out = evaltree( $list, $usercmd_blocks->{$name} );
 		foreach my $i ( 0 .. $num-1 ) {
-			assign( $userfunc_args->{$name}[$i] ); # remove var
+			assign( $usercmd_args->{$name}[$i] ); # remove var
 		}
 		return $out;
 	} else {
@@ -924,11 +924,11 @@ sub evaltree($$) {
 		my ($name, $strings, $block) = @tree;
 		$name =~ s/^-//;
 		die "cannot define -$name: already defined\n"
-			if exists $userfunc_blocks->{$name};
+			if exists $usercmd_blocks->{$name};
 		die "cannot define -$name: it is a keyword\n"
 			if exists $keywords{-$name};
-		$userfunc_blocks->{$name} = $block;
-		$userfunc_args->{$name} = $strings;
+		$usercmd_blocks->{$name} = $block;
+		$usercmd_args->{$name} = $strings;
 		return $list;
 	} elsif( $op eq 'CMD' ) {
 		# $after_OR is not changed here
