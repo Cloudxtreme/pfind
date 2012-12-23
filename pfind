@@ -31,7 +31,7 @@ my @preload = qw(
 	-sub -hup  [ -signal HUP  ]
 
 	-sub -ps [ -exec ps uf {} + ]
-	-sub -pso %PS_FIELDS [ -exec ps -o %PS_FIELDS {} + ]
+	-sub -pso %PS_FIELDS [ -exec ps -o\- %PS_FIELDS {} + ]
 
 	-sub -exe %exe_arg [ %exe == %exe_arg ]
 	-sub -cwd %cwd_arg [ %cwd == %cwd_arg ]
@@ -627,12 +627,13 @@ my %op2 = ( # do not firget to edit %op2_match and %op2_num!
 	":="	=> sub { die ":= is not a filter like other op2\n" },
 );
 
-my %keywords = map { $_ => 1 } (
-	",", qw/ ( ) [ ] { } ; + ! -not -and -a -or -o -quote -sub /,
-	keys(%op2),
-	map { "-$_" } (
+my %funckeywords = map { "-" . $_ => 1 } ( 
 		keys(%func0), keys(%func1), keys(%func2), keys(%funcm),
-	),
+);
+my %keywords = map { $_ => 1 } (
+	",", qw/ ( ) [ ] { } {} ; + ! -not -and -a -or -o -quote -sub /,
+	keys(%op2),
+	keys(%funckeywords),
 );
 
 # match operations have constant second argument:
@@ -696,120 +697,34 @@ sub eval_op2($$$$) {
 	}
 }
 
-sub get_args($$$;$) {
-	my ($cmdline, $funcname, $argnum, $desc) = @_;
-	# argnum=0 for funcm (-pids/-exec) which ends with ';' or '+'
-	$argnum =~ /^\d+$/ or die;
-	my @args = ();
-	for( my $i = 1; $i <= $argnum or not $argnum; $i++ ) {
-		my $curdesc = $desc // "argument $i for $funcname";
-		@$cmdline or die "cannot get $curdesc\n";
-		my $step1 = shift @$cmdline;
-		if( not $argnum and $step1 =~ /^[;\+]$/ ) {
-			unshift @args, $step1; # the end marker goes first
-			last;
-		} elsif( $step1 eq "-quote" ) {
-			@$cmdline or die "cannot get quoted $curdesc\n";
-			push @args, [ 'QUOTE', shift @$cmdline ];
-		} else {
-			die $step1 unless defined $step1
-				and not ref $step1 and length $step1;
-			push @args, $step1;
-		}
-	}
-	return @args;
-}
-
-sub tokenize(@) {
+sub mklexer(@) {
 	my @cmdline = @_;
-	my @out = ();
-	while(@cmdline) {
-		my $a = shift @cmdline;
-		if( $a =~ /^[\(\)\[\]\{\},]$/ ) { # parentheses and comma
-			push @out, [ $a, $a ];
-		} elsif( $a eq "!" or $a eq "-not" ) {
-			push @out, [ 'NOT', $a ];
-		} elsif( $a =~ /^-a(nd)?$/ ) {
-			push @out, [ 'AND', $a ];
-		} elsif( $a =~ /^-or?$/ ) {
-			push @out, [ 'OR', $a ];
-		} elsif( $a eq "-sub" ) {
-			@cmdline or die "end of cmdline found where function name expected\n";
-			my $funcname = shift @cmdline;
-			$funcname =~ s/^-// or die "function name must start with dash\n";
-			$funcname =~ /^[a-z][a-z01-9_]*$/ or die "bad function name: -$funcname\n";
-			my @funcargs = ();
-			while( @cmdline and $cmdline[0] =~ /^%/ ) {
-				my $arg = shift @cmdline;
-				$arg =~ /^%[a-zA-Z]\w*$/ or die "bad argument: $arg\n";
-				push @funcargs, $arg;
-			}
-			$userfunc_args->{$funcname} = [ @funcargs ];
-			# two unnecessary checks to produce someting more useful than "Parse error":
-			@cmdline or die "end of cmdline found where block expected\n";
-			$cmdline[0] =~ /^[\(\[\{]$/ or
-				die "unknown string $cmdline[0] found where block start expected\n";
-			push @out, [ 'SUB', $funcname ];
-		} elsif( $a =~ /^-(\w+)$/ and $a ne '-quote' ) {
-			my $name = $1;
-			if( $func0{$name} ) {
-				push @out, [ 'FUNC', [ 'FUNC', $name ] ];
-			} elsif( $func1{$name} ) {
-				push @out, [ 'FUNC', [ 'FUNC', $name,
-					get_args(\@cmdline, $a, 1) ] ];
-			} elsif( $func2{$name} ) {
-				push @out, [ 'FUNC', [ 'FUNC', $name,
-					get_args(\@cmdline, $a, 2) ] ];
-			} elsif( $funcm{$name} ) {
-				push @out, [ 'FUNC', [ 'FUNC', $name,
-					get_args(\@cmdline, $a, 0) ] ];
-			} elsif( $userfunc_args->{$name} ) {
-				my $num = scalar @{$userfunc_args->{$name}};
-				push @out, [ 'FUNC', [ 'FUNC', $name,
-					( $num ? get_args(\@cmdline, $a, $num) : () )
-				] ];
-			} else {
-				die "unknown function: $name\n";
-			}
-		} else {
-			unshift @cmdline, $a;
-			my ($left) = get_args( \@cmdline, "(unknown)", 1,
-				"left operand of unknown operation" );
-			@cmdline or die "end of cmdline found where operation expected\n";
-			my $op2name = shift @cmdline;
-			$op2{$op2name} or die "unknown string '$op2name' found where operation expected\n";
-			my ($right) = get_args( \@cmdline, $op2name, 1,
-				"right operand of unknown operation" );
-			push @out, [ 'OP2', [ 'OP2', $op2name, $left, $right ] ];
-		}
-	}
-	return [ @out ];
-}
-
-sub mklexer($) {
-	my $tokens_ref = shift;
-	my @tokens = @$tokens_ref;
+	@cmdline or die "mklexer: empty cmdline\n";
 	return sub {
-		if( @tokens ) {
-			my $token = shift @tokens;
-			return ( @$token );
+		return ( '', undef ) if not @cmdline;
+		my $current = shift @cmdline;
+		if( $current eq '=' ) {
+			die 'please replace `=` with `:=` for assignment or `==` for comparison\n';
+		} elsif( $current eq '-quote' ) {
+			@cmdline or die "unexpected end of cmdline after -quote\n";
+			return ( 'STRING', [ 'QUOTE', shift(@cmdline) ] );
+		} elsif( $keywords{$current} ) {
+			if( $funckeywords{$current} ) {
+				$current =~ /^-(\w+)$/ or die;
+				return ( 'FILTERNAME', $1 );
+			} else {
+				return ( $current, $current );
+			}
+		} elsif( $current =~ /^-(\w+)$/ ) {
+			return ( 'FILTERNAME', $1 );
 		} else {
-			return ( '', undef );
+			return ( 'STRING', $current );
 		}
-	}
-}
-
-sub addblock($$) {
-	my ($name, $block) = @_;
-	die "cannot define -$name: already defined\n"
-		if exists $userfunc_blocks->{$name};
-	die "cannot define -$name: it is a keyword\n"
-		if exists $keywords{-$name};
-	$userfunc_blocks->{$name} = $block;
-	return [ 'EMPTY', '-sub', $name ];
+	};
 }
 
 my $grammar = <<'GRAMMAR';
+%expect 3
 %%
 exp:	comma_exp ;
 comma_exp:
@@ -818,33 +733,74 @@ comma_exp:
 	;
 or_exp:
 	and_exp
-	| or_exp OR and_exp	{ [ 'OR', $_[1], $_[3] ] }
+	| or_exp or and_exp	{ [ 'OR', $_[1], $_[3] ] }
+	;
+or:
+	'-o'
+	| '-or'
 	;
 and_exp:
 	not_exp
 	| not_exp and and_exp	{ [ 'AND', $_[1], $_[3] ] }
 	;
 and:
-	#empty
-	| AND # -a | -and
+	# empty
+	| '-a'
+	| '-and'
 	;
 not_exp:
 	atom
-	| NOT not_exp		{ [ 'NOT', $_[2] ] }
+	| not not_exp		{ [ 'NOT', $_[2] ] }
+	;
+not:
+	'-not'
+	| '!'
 	;
 atom:
-	FUNC
-	| OP2
-	| sub
+	namedfilter_exp
+	| op2_exp
+	| sub_definition
 	| block
+	;
+namedfilter_exp:
+	FILTERNAME strings			{ [ 'FUNC', $_[1], @{$_[2]} ] }
+	| FILTERNAME strings '{}' strings	{ [ 'FUNC', $_[1], @{$_[2]}, '{}', @{$_[4]} ] }
+	| FILTERNAME strings '+'		{ [ 'FUNC', $_[1], '+', @{$_[2]} ] }
+	| FILTERNAME strings '{}' strings '+'	{ [ 'FUNC', $_[1], '+', @{$_[2]}, '{}', @{$_[4]} ] }
+	| FILTERNAME strings ';'		{ [ 'FUNC', $_[1], ';', @{$_[2]} ] }
+	| FILTERNAME strings '{}' strings ';'	{ [ 'FUNC', $_[1], ';', @{$_[2]}, '{}', @{$_[4]} ] }
+	;
+strings:
+	/* empty */		{ [] }
+	| STRING strings	{ [ $_[1], @{$_[2]} ] }
+	;
+op2_exp:
+	STRING op2 STRING	{ [ 'OP2', $_[2], $_[1], $_[3] ] }
+	;
+op2:
+	':='	
+	| '-m'	
+	| '=@'	
+	| '-nm'	
+	| '!@'	
+	| '=~'	
+	| '!~'	
+	| '=='	
+	| '!='	
+	| '-eq'	
+	| '-ne'	
+	| '-lt'	
+	| '-le'	
+	| '-gt'	
+	| '-ge'	
 	;
 block:
 	'(' exp ')'		{ [ 'BLOCK', $_[2] ] }
 	| '{' exp '}'		{ [ 'BLOCK', $_[2] ] }
 	| '[' exp ']'		{ [ 'BLOCK', $_[2] ] }
 	;
-sub:
-	SUB block		{ main::addblock( $_[1], $_[2] ) }
+sub_definition:
+	'-sub' FILTERNAME strings block	{ [ 'SUB', $_[2], $_[3], $_[4] ] }
 	;
 %%
 GRAMMAR
@@ -861,7 +817,7 @@ sub mktree(@) {
 
 	my $parser = new grammar_pfind;
 	return $parser->YYParse(
-		yylex => mklexer( tokenize @cmdline ),
+		yylex => mklexer( @cmdline ),
 		yyerror => sub{ die "Parse error\n" },
 	);
 }
@@ -961,6 +917,18 @@ sub evaltree($$) {
 			$list = evaltree( $list, $_ );
 			$previous_list = $list;
 		}
+		return $list;
+	} elsif( $op eq 'SUB' ) {
+		local $after_OR = undef;
+		3 == @tree or die;
+		my ($name, $strings, $block) = @tree;
+		$name =~ s/^-//;
+		die "cannot define -$name: already defined\n"
+			if exists $userfunc_blocks->{$name};
+		die "cannot define -$name: it is a keyword\n"
+			if exists $keywords{-$name};
+		$userfunc_blocks->{$name} = $block;
+		$userfunc_args->{$name} = $strings;
 		return $list;
 	} elsif( $op eq 'FUNC' ) {
 		# $after_OR is not changed here
