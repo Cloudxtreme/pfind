@@ -757,12 +757,12 @@ not:
 	| '!'
 	;
 atom:
-	namedfilter_exp
+	command_exp
 	| op2_exp
 	| sub_definition
 	| block
 	;
-namedfilter_exp:
+command_exp:
 	CMDNAME strings			{ [ 'CMD', $_[1], @{$_[2]} ] }
 	| CMDNAME strings '{}' strings	{ [ 'CMD', $_[1], @{$_[2]}, '{}', @{$_[4]} ] }
 	| CMDNAME strings '+'		{ [ 'CMD', $_[1], '+', @{$_[2]} ] }
