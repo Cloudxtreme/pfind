@@ -73,9 +73,18 @@ sub check_list($) {
 	}
 }
 
+sub check_defined_scalar($) {
+	1 == @_ or die;
+	my $value = shift;
+	return if defined($value) and not ref($value);
+	my ($package, $filename, $line) = caller;
+	die sprintf "check_defined_scalar failed at %s line %s: %s\n",
+		$filename, $line, Dumper($value);
+}
+
 sub read_file($) {
 	my $path = shift;
-	die $path unless defined $path and not ref $path;
+	check_defined_scalar $path;
 	die "absolute path expected: $path\n" unless $path =~ /^\//;
 	open FILE, "<", $path or return undef;
 	my @contents = <FILE>;
@@ -85,7 +94,7 @@ sub read_file($) {
 
 sub read_line_from_file($) {
 	my $path = shift;
-	die $path unless defined $path and not ref $path;
+	check_defined_scalar $path;
 	die "absolute path expected: $path\n" unless $path =~ /^\//;
 	open FILE, "<", $path or return undef;
 	my $line = <FILE>;
@@ -299,7 +308,7 @@ sub process_arg($;$) {
 	my ($arg, $list) = @_;
 	# we return hashref (if defined $list) or scalar (else)
 	die $list unless not defined $list or 'ARRAY' eq ref $list;
-	die $arg unless defined $arg and not ref $arg;
+	check_defined_scalar $arg;
 	if( $arg =~ /^\\q(.*)$/ ) {
 		# see also process_arg() for \q in variable values
 		return( (defined $list) ? { map { $_ => $1 } @$list } : $1 );
@@ -352,7 +361,7 @@ sub process_arg($;$) {
 				die "\%$name takes no args\n"
 					if defined $args and length $args;
 				my $value = $vars->{$name};
-				die $value unless defined($value) and not ref($value);
+				check_defined_scalar $value;
 				if( $value =~ /^\\q(.*)$/ ) {
 					$out->{$_}[$n] .= $1 for @outlist;
 				} else {
@@ -639,12 +648,11 @@ my %op2_num = map { $_ => 1 } qw/ -eq -ne -lt -le -gt -ge /;
 sub assign($;$) {
 	my ($name, $value) = @_;
 	# we do not use process_arg(), this is probably not good
-	die "variable name cannot be quoted in :=\n" if ref $name;
-	die unless defined $name;
+	check_defined_scalar $name;
 	# undefined $value will remove variable
-	die $value unless defined($value) and not ref($value);
+	die $value if ref $value;
 	$name =~ /^%(\w+)$/ or
-		die "first operand of := must be a variable name\n";
+		die "left operand of := must be unquoted variable name\n";
 	$name = $1; # drop initial '%'
 	$name =~ /^[a-zA-Z]/ or die "variable name must start with a letter\n";
 	# upper case names are reserved for global (not per-PID) variables
@@ -661,7 +669,7 @@ sub assign($;$) {
 
 sub eval_op2($$$$) {
 	my ($checklist, $name, $arg1, $arg2) = @_;
-	die unless defined $name and not ref $name;
+	check_defined_scalar $name;
 	if( $name eq ":=" ) {
 		assign( $arg1, $arg2 );
 		return $checklist;
@@ -840,7 +848,7 @@ sub mktree(@) {
 
 sub evalcmd($$@) {
 	my ($list, $name, @args) = @_;
-	(defined and not ref) or die $name foreach @args;
+	check_defined_scalar $_ foreach @args;
 	if( $cmd0{$name} ) {
 		die "command $name takes no args\n" if @args;
 		return $cmd0{$name}->($list);
