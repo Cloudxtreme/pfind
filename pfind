@@ -852,6 +852,7 @@ sub mktree(@) {
 
 sub evalcmd($$@) {
 	my ($list, $name, @args) = @_;
+	(defined and not ref) or die $name foreach @args;
 	if( $cmd0{$name} ) {
 		die "command $name takes no args\n" if @args;
 		return $cmd0{$name}->($list);
