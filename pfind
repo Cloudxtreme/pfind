@@ -311,6 +311,7 @@ sub process_arg($;$) {
 	}
 	die $arg unless defined $arg and not ref $arg;
 	if( $arg =~ /^\\q(.*)$/ ) {
+		# see also process_arg() for \q in variable values
 		return( (defined $list) ? { map { $_ => $1 } @$list } : $1 );
 	}
 	my @outlist = ( defined($list) ? @$list : ($NOPID) );
@@ -361,9 +362,9 @@ sub process_arg($;$) {
 				die "\%$name takes no args\n"
 					if defined $args and length $args;
 				my $value = $vars->{$name};
-				if( is_quoted_arg $value ) {
-					$value = $value->[1];
-					$out->{$_}[$n] .= $value for @outlist;
+				die $value unless defined($value) and not ref($value);
+				if( $value =~ /^\\q(.*)$/ ) {
+					$out->{$_}[$n] .= $1 for @outlist;
 				} else {
 					unshift @rest, $vars->{$name};
 				}
