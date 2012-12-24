@@ -651,7 +651,7 @@ sub assign($;$) {
 	die "variable name cannot be quoted in :=\n" if ref $name;
 	die unless defined $name;
 	# undefined $value will remove variable
-	die $value unless is_quoted_arg($value) or not ref $value;
+	die $value unless defined($value) and not ref($value);
 	$name =~ /^%(\w+)$/ or
 		die "first operand of := must be a variable name\n";
 	$name = $1; # drop initial '%'
