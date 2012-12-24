@@ -277,7 +277,7 @@ sub cmd_list($) {
 }
 
 my %sprintf_escapes = (
-	# \T is smart tab, \x is for hex, \0 is for oct
+	# \T is smart tab, \q is for -quote, \x is for hex, \0 is for oct
 	a	=> "\a",
 	b	=> "\b",
 	e	=> "\e",
@@ -310,6 +310,9 @@ sub process_arg($;$) {
 		return( (defined $list) ? { map { $_ => $s } @$list } : $s );
 	}
 	die $arg unless defined $arg and not ref $arg;
+	if( $arg =~ /^\\q(.*)$/ ) {
+		return( (defined $list) ? { map { $_ => $1 } @$list } : $1 );
+	}
 	my @outlist = ( defined($list) ? @$list : ($NOPID) );
 	my $n = 0; # current field number for smart tabs
 	my %rightalign = ();
@@ -712,7 +715,7 @@ sub mklexer(@) {
 			die "$reserved{$current}\n";
 		} elsif( $current eq '-quote' ) {
 			@cmdline or die "unexpected end of cmdline after -quote\n";
-			return ( 'STRING', [ 'QUOTE', shift(@cmdline) ] );
+			return ( 'STRING', ('\q' . shift @cmdline) );
 		} elsif( $keywords{$current} ) {
 			if( $cmdkeywords{$current} ) {
 				$current =~ /^-(\w+)$/ or die;
