@@ -738,10 +738,7 @@ sub mklexer(@) {
 	};
 	my $error_sub = sub {
 		die unless @last;
-		my @l = @last;
-		my $top = pop @l;
-		@l = ( @l, "HERE->>", $top, "<<-HERE" );
-		die sprintf "Unexpected $top: ... %s\n", join " ", @l;
+		die "Unexpected $last[$#last]: ... @last <<<<<HERE\n",
 	};
 	return $lexer, $error_sub;
 }
