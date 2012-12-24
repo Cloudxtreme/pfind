@@ -295,20 +295,10 @@ sub get_value_for_printf($$) {
 	return cached_get( $pid, $name, @args );
 }
 
-sub is_quoted_arg($) {
-	my $arg = shift;
-	return( defined($arg) and ref($arg) and 'ARRAY' eq ref($arg)
-		and 'QUOTE' eq $arg->[0] and 2 == @$arg );
-}
-
 sub process_arg($;$) {
 	my ($arg, $list) = @_;
 	# we return hashref (if defined $list) or scalar (else)
 	die $list unless not defined $list or 'ARRAY' eq ref $list;
-	if( is_quoted_arg $arg ) {
-		my $s = $arg->[1];
-		return( (defined $list) ? { map { $_ => $s } @$list } : $s );
-	}
 	die $arg unless defined $arg and not ref $arg;
 	if( $arg =~ /^\\q(.*)$/ ) {
 		# see also process_arg() for \q in variable values
