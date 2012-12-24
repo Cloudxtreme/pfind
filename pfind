@@ -635,7 +635,7 @@ my %cmdkeywords = map { "-" . $_ => 1 } (
 		keys(%cmd0), keys(%cmd1), keys(%cmd2), keys(%cmdm),
 );
 my %keywords = map { $_ => 1 } (
-	",", qw/ ( ) [ ] { } {} ; ! -not -and -a -or -o -quote -sub /,
+	",", qw/ ( ) [ ] { } {} ; ! -not -and -a -or -o -quote -q -sub /,
 	keys(%op2),
 	keys(%cmdkeywords),
 );
@@ -713,8 +713,8 @@ sub mklexer(@) {
 		my $current = shift @cmdline;
 		if( exists $reserved{$current} ) {
 			die "$reserved{$current}\n";
-		} elsif( $current eq '-quote' ) {
-			@cmdline or die "unexpected end of cmdline after -quote\n";
+		} elsif( $current =~ /^-q(uote)?$/ ) {
+			@cmdline or die "unexpected end of cmdline after $current\n";
 			return ( 'STRING', ('\q' . shift @cmdline) );
 		} elsif( $keywords{$current} ) {
 			if( $cmdkeywords{$current} ) {
