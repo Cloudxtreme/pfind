@@ -505,10 +505,7 @@ sub cmd_exec($$@) {
 	die "-exec takes at least two arguments\n" unless @args;
 	my $braces_index;
 	foreach my $i ( 0 .. $#args ) {
-		if( not is_quoted_arg($args[$i]) ) {
-			die unless defined $args[$i];
-			die if ref $args[$i];
-			next unless '{}' eq $args[$i];
+		if( '{}' eq $args[$i] ) {
 			if( defined $braces_index ) {
 				die "-exec expects no more than one '{}' argument\n";
 			} else {
