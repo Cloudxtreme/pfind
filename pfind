@@ -637,7 +637,7 @@ my %keywords = map { $_ => 1 } (
 	keys(%cmdkeywords),
 );
 my %reserved = ( '=' => 'please replace `=` with `:=` for assignment or `==` for comparison' );
-$reserved{$_} = "$_ is reserved, please use -quote $_ is you need to use it as string"
+$reserved{$_} = "$_ is reserved, please use -quote $_ if you need to use it as string"
 	foreach '#', qw( _ + - * \ | / ? : ~ ^ . @ % $ " ' ` );
 
 # match operations have constant second argument:
