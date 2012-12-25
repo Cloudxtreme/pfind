@@ -783,8 +783,8 @@ atom:
 	| block
 	;
 command_exp:
-	CMDNAME strings cmd_end			{ [ 'CMD', $_[1], @{$_[2]} ] }
-	| CMDNAME strings '{}' strings cmd_end	{ [ 'CMD', $_[1], @{$_[2]}, '{}', @{$_[4]} ] }
+	CMDNAME strings cmd_end			{ [ 'CMDRUN', $_[1], @{$_[2]} ] }
+	| CMDNAME strings '{}' strings cmd_end	{ [ 'CMDRUN', $_[1], @{$_[2]}, '{}', @{$_[4]} ] }
 	;
 cmd_end:
 	/* empty */
@@ -952,7 +952,7 @@ sub evaltree($$) {
 		$usercmd_blocks->{$name} = $block;
 		$usercmd_args->{$name} = $strings;
 		return $list;
-	} elsif( $op eq 'CMD' ) {
+	} elsif( $op eq 'CMDRUN' ) {
 		# $after_OR is not changed here
 		@tree or die "no command name\n";
 		my $name = shift @tree;
