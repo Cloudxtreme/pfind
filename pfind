@@ -610,7 +610,7 @@ my %cmdm = (
 	"pids"		=> \&cmd_pids,
 	"exec"		=> \&cmd_exec,
 );
-my %op2 = ( # do not firget to edit %op2_match and %op2_num!
+my %compare = ( # do not firget to edit %compare_match and %compare_num!
 	"-m"	=> sub { $_[0] =~ pattern2re $_[1] },
 	"=@"	=> "-m",
 	"-nm"	=> sub { $_[0] !~ pattern2re $_[1] },
@@ -627,16 +627,16 @@ my %op2 = ( # do not firget to edit %op2_match and %op2_num!
 	-ge	=> sub { $_[0] >= $_[1] },
 );
 # match operations have constant second argument:
-my %op2_match = map {$_ => 1 } qw/ -m =@ -nm !@ =~ !~ /;
+my %compare_match = map {$_ => 1 } qw/ -m =@ -nm !@ =~ !~ /;
 # arguments of numeric operations are checked to be numeric:
-my %op2_num = map { $_ => 1 } qw/ -eq -ne -lt -le -gt -ge /;
+my %compare_num = map { $_ => 1 } qw/ -eq -ne -lt -le -gt -ge /;
 
 my %cmdkeywords = map { "-" . $_ => 1 } ( 
 		keys(%cmd0), keys(%cmd1), keys(%cmd2), keys(%cmdm),
 );
 my %keywords = map { $_ => 1 } (
 	",", qw/ -comma ( ) [ ] { } {} ; ! -not -and -a -or -o -quote -q -cmd := /,
-	keys(%op2),
+	keys(%compare),
 	keys(%cmdkeywords),
 );
 my %reserved = ( '=' => 'please replace `=` with `:=` for assignment or `==` for comparison' );
@@ -665,14 +665,14 @@ sub assign($;$) {
 	}
 }
 
-sub eval_op2($$$$) {
+sub eval_compare($$$$) {
 	my ($checklist, $name, $arg1, $arg2) = @_;
 	check_defined_scalar $name;
 	die if $name eq ":=";
-	my $code = $op2{$name};
-	$code = $op2{$code} if not ref $code;
+	my $code = $compare{$name};
+	$code = $compare{$code} if not ref $code;
 	die $name unless 'CODE' eq ref $code;
-	if( $op2_match{$name} ) {
+	if( $compare_match{$name} ) {
 		my $hashed_arg1 = process_arg( $arg1, $checklist );
 		$arg2 = process_arg $arg2;
 		return [ grep {
@@ -681,7 +681,7 @@ sub eval_op2($$$$) {
 	} else {
 		my $hashed_arg1 = process_arg( $arg1, $checklist );
 		my $hashed_arg2 = process_arg( $arg2, $checklist );
-		if( $op2_num{$name} ) {
+		if( $compare_num{$name} ) {
 			foreach my $pid ( @$checklist ) {
 				die "left operand '$hashed_arg1->{$pid}' of $name is not numeric for PID $pid\n"
 					unless $hashed_arg1->{$pid} =~ /^[\-\+]?\d+$/;
@@ -801,7 +801,7 @@ not:
 atom:
 	command_exp
 	| assignment
-	| op2_exp
+	| compare_exp
 	| cmd_definition
 	| block
 	;
@@ -820,10 +820,10 @@ strings:
 assignment:
 	STRING ':=' STRING	{ [ 'ASSIGN', $_[1], $_[3] ] }
 	;
-op2_exp:
-	STRING op2 STRING	{ [ 'OP2', $_[2], $_[1], $_[3] ] }
+compare_exp:
+	STRING compare STRING	{ [ 'COMPARE', $_[2], $_[1], $_[3] ] }
 	;
-op2:
+compare:
 	'-m'	
 	| '=@'	
 	| '-nm'	
@@ -991,11 +991,11 @@ sub evaltree($$) {
 		assign( $left, $right );
 		$previous_list = $list;
 		return $list;
-	} elsif( $op eq 'OP2' ) {
+	} elsif( $op eq 'COMPARE' ) {
 		# $after_OR is not changed here
 		3 == @tree or die "$op takes three args\n";
-		my ($op2name, $left, $right) = @tree;
-		$list = eval_op2( $list, $op2name, $left, $right );
+		my ($compare_name, $left, $right) = @tree;
+		$list = eval_compare( $list, $compare_name, $left, $right );
 		$previous_list = $list;
 		return $list;
 	} elsif( $op eq 'EMPTY' ) {
