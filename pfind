@@ -741,7 +741,7 @@ sub mklexer(@) {
 
 sub unite_trees($@) {
 	my ($op, @trees) = @_;
-	die $op unless $op =~ /^(AND)$/;
+	die $op unless $op =~ /^(COMMA|OR|AND)$/;
 	die $op unless @trees;
 	my @united;
 	while( @trees ) {
@@ -772,7 +772,7 @@ my $grammar = <<'GRAMMAR';
 exp:	comma_exp ;
 comma_exp:
 	or_exp
-	| or_exp comma comma_exp	{ [ 'COMMA', $_[1], $_[3] ] }
+	| or_exp comma comma_exp	{ unite 'COMMA', $_[1], $_[3] }
 	;
 comma:
 	','
@@ -780,7 +780,7 @@ comma:
 	;
 or_exp:
 	and_exp
-	| or_exp or and_exp	{ [ 'OR', $_[1], $_[3] ] }
+	| or_exp or and_exp	{ unite 'OR', $_[1], $_[3] }
 	;
 or:
 	'-o'
