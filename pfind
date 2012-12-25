@@ -765,7 +765,7 @@ sub unite_trees($@) {
 my $grammar = <<'GRAMMAR';
 %expect 3
 %{
-	sub unite;
+	sub unite($@);
 	*unite = \&main::unite_trees;
 %}
 %%
@@ -1018,7 +1018,7 @@ sub main() {
 			die "Unknown option: $option\n";
 		}
 	}
-	my $tree = mktree( @preload, @ARGV );
+	my $tree = mktree( @preload, ",", @ARGV );
 	if( $dump_tree ) {
 		print Data::Dumper->Dump( [$tree], ["SyntaxTree"] );
 		exit 0;
