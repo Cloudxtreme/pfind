@@ -23,24 +23,24 @@ my $HEADERPID = -2;
 my $smarttabheader;
 
 my @preload = qw(
-	-sub -echo %str [ -printf %str\n ]
-	-sub -echo1 %STR [ -print1 %STR\n ]
+	-cmd -echo %str [ -printf %str\n ]
+	-cmd -echo1 %STR [ -print1 %STR\n ]
 
-	-sub -kill [ -signal KILL ]
-	-sub -term [ -signal TERM ]
-	-sub -hup  [ -signal HUP  ]
+	-cmd -kill [ -signal KILL ]
+	-cmd -term [ -signal TERM ]
+	-cmd -hup  [ -signal HUP  ]
 
-	-sub -ps [ -exec ps uf {} ]
-	-sub -pso %PS_FIELDS [ -exec ps -o\- %PS_FIELDS {} ]
+	-cmd -ps [ -exec ps uf {} ]
+	-cmd -pso %PS_FIELDS [ -exec ps -o\- %PS_FIELDS {} ]
 
-	-sub -exe %exe_arg [ %exe == %exe_arg ]
-	-sub -cwd %cwd_arg [ %cwd == %cwd_arg ]
+	-cmd -exe %exe_arg [ %exe == %exe_arg ]
+	-cmd -cwd %cwd_arg [ %cwd == %cwd_arg ]
 
 	%vsz := %statm::size
 	%rss := %statm::resident
 
-	-sub -kthread [ 0 == %rss ]
-	-sub -userspace [ ! -kthread ]
+	-cmd -kthread [ 0 == %rss ]
+	-cmd -userspace [ ! -kthread ]
 
 	%ppid := %stat::ppid
 	%comm := %stat::comm
@@ -632,7 +632,7 @@ my %cmdkeywords = map { "-" . $_ => 1 } (
 		keys(%cmd0), keys(%cmd1), keys(%cmd2), keys(%cmdm),
 );
 my %keywords = map { $_ => 1 } (
-	",", qw/ -comma ( ) [ ] { } {} ; ! -not -and -a -or -o -quote -q -sub /,
+	",", qw/ -comma ( ) [ ] { } {} ; ! -not -and -a -or -o -quote -q -cmd /,
 	keys(%op2),
 	keys(%cmdkeywords),
 );
@@ -779,7 +779,7 @@ not:
 atom:
 	command_exp
 	| op2_exp
-	| sub_definition
+	| cmd_definition
 	| block
 	;
 command_exp:
@@ -819,8 +819,8 @@ block:
 	| '{' exp '}'		{ [ 'BLOCK', $_[2] ] }
 	| '[' exp ']'		{ [ 'BLOCK', $_[2] ] }
 	;
-sub_definition:
-	'-sub' CMDNAME strings block	{ [ 'SUB', $_[2], $_[3], $_[4] ] }
+cmd_definition:
+	'-cmd' CMDNAME strings block	{ [ 'CMDDEF', $_[2], $_[3], $_[4] ] }
 	;
 %%
 GRAMMAR
@@ -940,7 +940,7 @@ sub evaltree($$) {
 			$previous_list = $list;
 		}
 		return $list;
-	} elsif( $op eq 'SUB' ) {
+	} elsif( $op eq 'CMDDEF' ) {
 		local $after_OR = undef;
 		3 == @tree or die;
 		my ($name, $strings, $block) = @tree;
