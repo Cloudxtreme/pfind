@@ -1023,6 +1023,7 @@ sub main() {
 			die "Unknown option: $option\n";
 		}
 	}
+	push @ARGV, "-true" unless @ARGV;
 	my $tree = mktree( @preload, ",", @ARGV );
 	if( $dump_tree ) {
 		local $Data::Dumper::Indent = 1;
