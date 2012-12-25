@@ -1020,6 +1020,7 @@ sub main() {
 	}
 	my $tree = mktree( @preload, ",", @ARGV );
 	if( $dump_tree ) {
+		local $Data::Dumper::Indent = 1;
 		print Data::Dumper->Dump( [$tree], ["SyntaxTree"] );
 		exit 0;
 	}
