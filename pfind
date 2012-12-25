@@ -626,6 +626,10 @@ my %op2 = ( # do not firget to edit %op2_match and %op2_num!
 	-gt	=> sub { $_[0] > $_[1] },
 	-ge	=> sub { $_[0] >= $_[1] },
 );
+# match operations have constant second argument:
+my %op2_match = map {$_ => 1 } qw/ -m =@ -nm !@ =~ !~ /;
+# arguments of numeric operations are checked to be numeric:
+my %op2_num = map { $_ => 1 } qw/ -eq -ne -lt -le -gt -ge /;
 
 my %cmdkeywords = map { "-" . $_ => 1 } ( 
 		keys(%cmd0), keys(%cmd1), keys(%cmd2), keys(%cmdm),
@@ -638,11 +642,6 @@ my %keywords = map { $_ => 1 } (
 my %reserved = ( '=' => 'please replace `=` with `:=` for assignment or `==` for comparison' );
 $reserved{$_} = "$_ is reserved, please use -quote $_ if you need to use it as string"
 	foreach '#', qw( _ + - * \ | / ? : ~ ^ . @ % $ " ' ` );
-
-# match operations have constant second argument:
-my %op2_match = map {$_ => 1 } qw/ -m =@ -nm !@ =~ !~ /;
-# arguments of numeric operations are checked to be numeric:
-my %op2_num = map { $_ => 1 } qw/ -eq -ne -lt -le -gt -ge /;
 
 sub assign($;$) {
 	my ($name, $value) = @_;
