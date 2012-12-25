@@ -703,20 +703,20 @@ sub eval_op2($$$$) {
 sub mklexer(@) {
 	my @cmdline = @_;
 	@cmdline or die "mklexer: empty cmdline\n";
-	my @last = ();
+	my @tokenized = ();
 	my $lexer = sub {
 		if( not @cmdline ) {
-			push @last, "(end of cmdline)";
+			push @tokenized, "(end of cmdline)";
 			return ( '', undef );
 		}
 		my $current = shift @cmdline;
-		push @last, $current;
+		push @tokenized, $current;
 		if( exists $reserved{$current} ) {
 			die "$reserved{$current}\n";
 		} elsif( $current =~ /^-q(uote)?$/ ) {
 			@cmdline or die "unexpected end of cmdline after $current\n";
 			my $qstr = '\q' . shift @cmdline;
-			$last[$#last] = $qstr;
+			$tokenized[$#tokenized] = $qstr;
 			return ( 'STRING', $qstr );
 		} elsif( $keywords{$current} ) {
 			if( $cmdkeywords{$current} ) {
@@ -732,9 +732,9 @@ sub mklexer(@) {
 		}
 	};
 	my $error_sub = sub {
-		shift @last while @last > 5;
-		die unless @last;
-		die "Unexpected $last[$#last]: ... @last <<<<<HERE\n",
+		shift @tokenized while @tokenized > 5;
+		die unless @tokenized;
+		die "Unexpected $tokenized[$#tokenized]: ... @tokenized <<<<<HERE\n",
 	};
 	return $lexer, $error_sub;
 }
