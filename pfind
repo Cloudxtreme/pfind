@@ -704,14 +704,20 @@ sub mklexer(@) {
 	my @cmdline = @_;
 	@cmdline or die "mklexer: empty cmdline\n";
 	my @last = ();
-	my $prelexer = sub {
-		return ( '', undef ) if not @cmdline;
+	my $lexer = sub {
+		if( not @cmdline ) {
+			push @last, "(end of cmdline)";
+			return ( '', undef );
+		}
 		my $current = shift @cmdline;
+		push @last, $current;
 		if( exists $reserved{$current} ) {
 			die "$reserved{$current}\n";
 		} elsif( $current =~ /^-q(uote)?$/ ) {
 			@cmdline or die "unexpected end of cmdline after $current\n";
-			return ( 'STRING', ('\q' . shift @cmdline) );
+			my $qstr = '\q' . shift @cmdline;
+			$last[$#last] = $qstr;
+			return ( 'STRING', $qstr );
 		} elsif( $keywords{$current} ) {
 			if( $cmdkeywords{$current} ) {
 				$current =~ /^-(\w+)$/ or die;
@@ -725,18 +731,8 @@ sub mklexer(@) {
 			return ( 'STRING', $current );
 		}
 	};
-	my $lexer = sub {
-		my ($a, $b) = $prelexer->();
-		if( not defined $b ) {
-			die unless defined($a) and '' eq $a;
-			push @last, "(end of cmdline)";
-		} else {
-			push @last, $b;
-		}
-		shift @last while @last > 5;
-		return $a, $b;
-	};
 	my $error_sub = sub {
+		shift @last while @last > 5;
 		die unless @last;
 		die "Unexpected $last[$#last]: ... @last <<<<<HERE\n",
 	};
