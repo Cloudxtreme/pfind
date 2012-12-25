@@ -632,7 +632,7 @@ my %cmdkeywords = map { "-" . $_ => 1 } (
 		keys(%cmd0), keys(%cmd1), keys(%cmd2), keys(%cmdm),
 );
 my %keywords = map { $_ => 1 } (
-	",", qw/ ( ) [ ] { } {} ; ! -not -and -a -or -o -quote -q -sub /,
+	",", qw/ -comma ( ) [ ] { } {} ; ! -not -and -a -or -o -quote -q -sub /,
 	keys(%op2),
 	keys(%cmdkeywords),
 );
@@ -749,7 +749,11 @@ my $grammar = <<'GRAMMAR';
 exp:	comma_exp ;
 comma_exp:
 	or_exp
-	| or_exp ',' comma_exp	{ [ 'COMMA', $_[1], $_[3] ] }
+	| or_exp comma comma_exp	{ [ 'COMMA', $_[1], $_[3] ] }
+	;
+comma:
+	','
+	| '-comma'
 	;
 or_exp:
 	and_exp
