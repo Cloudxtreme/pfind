@@ -1049,10 +1049,9 @@ sub dumplisp_iter($;$$) {
 			if( defined $try_add ) {
 				my $try_out = $out . $try_add;
 				return $try_out if length $try_out <= $maxlength;
-			} else {
-				$out .= "(" . dumplisp_scalar shift @l;
-				$out .= dumplisp_iter( $_, $level + 1 ) foreach @l;
 			}
+			$out .= "(" . dumplisp_scalar shift @l;
+			$out .= dumplisp_iter( $_, $level + 1 ) foreach @l;
 		}
 		$out .= ")";
 		die if $simple and length $out > $maxlength;
