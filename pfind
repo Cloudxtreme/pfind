@@ -783,10 +783,10 @@ atom:
 	| block
 	;
 command_exp:
-	CMDNAME strings cmd_end			{ [ 'CMDRUN', $_[1], @{$_[2]} ] }
-	| CMDNAME strings '{}' strings cmd_end	{ [ 'CMDRUN', $_[1], @{$_[2]}, '{}', @{$_[4]} ] }
+	CMDNAME strings end_cmd			{ [ 'CMDRUN', $_[1], @{$_[2]} ] }
+	| CMDNAME strings '{}' strings end_cmd	{ [ 'CMDRUN', $_[1], @{$_[2]}, '{}', @{$_[4]} ] }
 	;
-cmd_end:
+end_cmd:
 	/* empty */
 	| ';'
 	;
