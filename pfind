@@ -36,15 +36,15 @@ my @preload = qw(
 	-cmd -exe %exe_arg [ %exe == %exe_arg ]
 	-cmd -cwd %cwd_arg [ %cwd == %cwd_arg ]
 
-	%vsz := %statm::size
-	%rss := %statm::resident
+	%vsz := %statm/size
+	%rss := %statm/resident
 
 	-cmd -kthread [ 0 == %rss ]
 	-cmd -userspace [ ! -kthread ]
 
-	%ppid := %stat::ppid
-	%comm := %stat::comm
-	%state := %stat::state
+	%ppid := %stat/ppid
+	%comm := %stat/comm
+	%state := %stat/state
 );
 
 sub get_full_proc_list() {
@@ -300,7 +300,7 @@ my %sprintf_escapes = (
 
 sub get_value_for_printf($$) {
 	my ($pid, $long_name) = @_;
-	my ($name, @args) = split /::/, $long_name;
+	my ($name, @args) = split /\//, $long_name;
 	return cached_get( $pid, $name, @args );
 }
 
@@ -332,7 +332,7 @@ sub process_arg($;$) {
 			my $headername = "";
 			if( defined $3 ) {
 				$headername = $3;
-			} elsif( $rest[0] =~ /^\s+\%(\w[\w:]+)/ ) {
+			} elsif( $rest[0] =~ /^\s+\%(\w[\w\/]+)/ ) {
 				$headername = uc $1;
 			}
 			push @header, $headername;
@@ -351,7 +351,7 @@ sub process_arg($;$) {
 			my $add = $sprintf_escapes{$1} // "\\$1";
 			$out->{$_}[$n] .= $add for @outlist;
 			$rest[0] = $2;
-		} elsif( $rest[0] =~ /^%(([a-zA-Z]\w*)(::[a-zA-Z]\w*)*)(.*)$/ ) {
+		} elsif( $rest[0] =~ /^%(([a-zA-Z]\w*)(\/[a-zA-Z]\w*)*)(.*)$/ ) {
 			my ($exp, $name, $args) = ($1, $2, $3);
 			$rest[0] = $4;
 			my $var_is_local = ( $name =~ /^[a-z]/ );
