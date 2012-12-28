@@ -45,6 +45,11 @@ my @preload = qw(
 	%ppid := %stat/ppid
 	%comm := %stat/comm
 	%state := %stat/state
+
+	%name := %status/Name
+
+	-cmd -grep %GREP_ARG [ %exe -m *%GREP_ARG*
+		-or %comm -m *%GREP_ARG* -or %name -m *%GREP_ARG* ]
 );
 
 sub get_full_proc_list() {
