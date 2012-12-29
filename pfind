@@ -300,6 +300,7 @@ my %sprintf_escapes = (
 	f	=> "\f",
 	n	=> "\n",
 	r	=> "\r",
+	s	=> " ",
 	t	=> "\t",
 	"\\"	=> "\\",
 	"-"	=> "", # empty string, works as a separator
