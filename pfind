@@ -50,6 +50,8 @@ my @preload = qw(
 
 	-cmd -grep %GREP_ARG [ %exe -m *%GREP_ARG*
 		-or %comm -m *%GREP_ARG* -or %name -m *%GREP_ARG* ]
+	-cmd -egrep %EGREP_ARG [ %exe =~ %EGREP_ARG
+		-or %comm =~ %EGREP_ARG -or %name =~ %EGREP_ARG ]
 );
 
 sub get_full_proc_list() {
