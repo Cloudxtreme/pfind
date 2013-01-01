@@ -326,17 +326,17 @@ sub process_arg($;$) {
 	}
 	my @outlist = ( defined($list) ? @$list : ($NOPID) );
 	my $n = 0; # current field number for smart tabs
-	my %rightalign = ();
+	my %align = ();
 	my $out = { map { $_ => [""] } @outlist };
 	my @header = ( "" );
 	my @rest = ( $arg );
 	while( @rest ) {
 		if( not length $rest[0] ) {
 			shift @rest;
-		} elsif( $rest[0] =~ /^\s*\\T(>)?(\((\w+)\))?\s*(.*)$/ ) {
+		} elsif( $rest[0] =~ /^\s*\\T([<>]?)(\((\w+)\))?\s*(.*)$/ ) {
 			$rest[0] = $4;
 			push @{$out->{$_}}, "" for @outlist;
-			$rightalign{$n+1} = 1 if $1;
+			$align{$n+1} = $1;
 			my $headername = "";
 			if( defined $3 ) {
 				$headername = $3;
@@ -399,6 +399,9 @@ sub process_arg($;$) {
 				$maxlengths[$i] = $len if $len > $maxlengths[$i];
 			}
 		}
+		my %rightalign = map {
+			$align{$_} eq ">" ? ($_ => 1) : ($_ => 0)
+		} keys %align;
 		foreach my $pid (@outlist, $HEADERPID) {
 			foreach my $i ( 0 .. $n ) {
 				last if $i == $n and not $rightalign{$i};
