@@ -236,6 +236,7 @@ my %getters0 = (
 	"exe"	=> sub { readlink("/proc/$_[0]/exe") // "" },
 	"cwd"	=> sub { readlink("/proc/$_[0]/cwd") // "" },
 	"root"	=> sub { readlink("/proc/$_[0]/root") // "" },
+	"tree"	=> sub { "" }, # see -settree
 	"UPTIME"	=> \&get_UPTIME,
 	"PAGESIZE"	=> sub { $NOPID eq $_[0] ? sysconf(_SC_PAGESIZE) : die },
 	"HZ"		=> \&get_HZ,
@@ -593,10 +594,49 @@ sub cmd_tail($$) {
 	return [ @$checklist[$total-$num .. $total-1] ];
 }
 
+sub do_settree($$$);
+sub do_settree($$$) {
+	my ($children, $pid, $prefix ) = @_;
+	my @out = ();
+	my @mychildren = @{$children->{$pid}};
+	while( @mychildren ) {
+		my $child = shift @mychildren;
+		my $childprefix = $pid ? "$prefix \\_ " : $prefix;
+		$state->{$child}{"tree"} = $childprefix;
+		push @out, $child;
+		my $nextprefix =
+			(not $pid) ? $prefix
+			: @mychildren ? "$prefix |  "
+			: "$prefix    ";
+		if( $children->{$child} ) {
+			push @out, do_settree( $children, $child, $nextprefix );
+		}
+	}
+	return @out;
+}
+sub cmd_settree($) {
+	my $checklist = shift;
+	my %pidset = map { $_ => 1 } @$checklist;
+	my $children = { 0 => [] };
+	foreach my $pid ( sort { $a <=> $b } @$checklist ) {
+		my $ppid = cached_get( $pid, "stat", "ppid" );
+		if( $pidset{$ppid} and $ppid > 1 ) {
+			$children->{$ppid} ||= [];
+			push @{$children->{$ppid}}, $pid;
+		} else {
+			push @{$children->{0}}, $pid;
+		}
+	}
+	$state->{$_}{"tree"} = "" foreach @{$state->{"all"}};
+	my @sorted = do_settree( $children, 0, "" );
+	return \@sorted;
+}
+
 my %cmd0 = (
 	"true"	=> sub { return $_[0] },
 	"false"	=> sub { return [] },
 	"list"	=> \&cmd_list,
+	"settree"	=> \&cmd_settree,
 	"children"	=> sub { cmd_additions( shift, "children", \&inc_children, 1 ) },
 	"descendants"	=> sub { cmd_additions shift, "descendants", \&inc_children, undef },
 	"parents"	=> sub { cmd_additions( shift, "parents", \&inc_parent, 1 ) },
