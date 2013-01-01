@@ -53,7 +53,7 @@ my @preload = qw(
 	-cmd -egrep %EGREP_ARG [ %exe =~ %EGREP_ARG
 		-or %comm =~ %EGREP_ARG -or %name =~ %EGREP_ARG ]
 
-	-cmd -pstree [ -settree -echo \T>%ppid\T>%pid\T%tree%name ]
+	-cmd -pstree [ -settree -echo \T%ppid\T%pid\T%tree%name ]
 );
 
 sub get_full_proc_list() {
@@ -399,9 +399,25 @@ sub process_arg($;$) {
 				$maxlengths[$i] = $len if $len > $maxlengths[$i];
 			}
 		}
-		my %rightalign = map {
-			$align{$_} eq ">" ? ($_ => 1) : ($_ => 0)
-		} keys %align;
+		my %rightalign = ();
+		foreach my $i ( 0 .. $n ) {
+			if( $align{$i} eq ">" ) {
+				$rightalign{$i} = 1;
+			} elsif( $align{$i} eq "<" ) {
+				$rightalign{$i} = 0;
+			} elsif( $align{$i} eq "" ) {
+				my $numonly = 1;
+				foreach my $pid ( @outlist ) {
+					unless( $out->{$pid}[$i] =~ /^\s*\d+\s*$/ ) {
+						$numonly = 0;
+						last;
+					}
+				}
+				$rightalign{$i} = @outlist ? $numonly : 0;
+			} else {
+				die $i;
+			}
+		}
 		foreach my $pid (@outlist, $HEADERPID) {
 			foreach my $i ( 0 .. $n ) {
 				last if $i == $n and not $rightalign{$i};
