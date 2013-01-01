@@ -52,6 +52,8 @@ my @preload = qw(
 		-or %comm -m *%GREP_ARG* -or %name -m *%GREP_ARG* ]
 	-cmd -egrep %EGREP_ARG [ %exe =~ %EGREP_ARG
 		-or %comm =~ %EGREP_ARG -or %name =~ %EGREP_ARG ]
+
+	-cmd -pstree [ -settree -echo \T>%ppid\T>%pid\T%tree%name ]
 );
 
 sub get_full_proc_list() {
