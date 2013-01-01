@@ -331,10 +331,7 @@ sub process_arg($;$) {
 	while( @rest ) {
 		if( not length $rest[0] ) {
 			shift @rest;
-		} elsif( $rest[0] =~ /^([^\\%]+)(.*)$/ ) {
-			$out->{$_}[$n] .= $1 for @outlist;
-			$rest[0] = $2;
-		} elsif( $rest[0] =~ /^\\T(>)?(\((\w+)\))?(.*)$/ ) {
+		} elsif( $rest[0] =~ /^\s*\\T(>)?(\((\w+)\))?\s*(.*)$/ ) {
 			$rest[0] = $4;
 			push @{$out->{$_}}, "" for @outlist;
 			$rightalign{$n+1} = 1 if $1;
@@ -346,6 +343,9 @@ sub process_arg($;$) {
 			}
 			push @header, $headername;
 			++$n;
+		} elsif( $rest[0] =~ /^([^\\%]+)(.*)$/ ) {
+			$out->{$_}[$n] .= $1 for @outlist;
+			$rest[0] = $2;
 		} elsif( $rest[0] =~ /^\\x([01-9a-f]{2})(.*)$/ ) {
 			my $add = chr hex $1;
 			$out->{$_}[$n] .= $add for @outlist;
@@ -393,8 +393,6 @@ sub process_arg($;$) {
 		foreach my $pid (@outlist, $HEADERPID) {
 			chomp $out->{$pid}[$n];
 			foreach my $i ( 0 .. $n ) {
-				$out->{$pid}[$i] =~ s/^ +//;
-				$out->{$pid}[$i] =~ s/ +$//;
 				my $len = length $out->{$pid}[$i];
 				$maxlengths[$i] = $len if $len > $maxlengths[$i];
 			}
