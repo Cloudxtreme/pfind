@@ -957,6 +957,7 @@ maybe_else_option:
 	;
 condition:
 	compare_exp
+	| not compare_exp		{ [ 'NOT', $_[2] ] }
 	;
 block:
 	'(' exp ')'		{ [ 'BLOCK', $_[2] ] }
@@ -1095,10 +1096,16 @@ sub evaltree($$) {
 			} elsif( $option->[0] eq 'OPTION' ) {
 				die unless 3 == @$option;
 				my( undef, $condition, $subtree ) = @$option;
+				my $negative;
+				if( $condition->[0] eq 'NOT' ) {
+					die unless 2 == @$condition;
+					$negative = 1;
+					$condition = $condition->[1];
+				}
 				die unless 4 == @$condition;
 				die unless 'COMPARE' eq $condition->[0];
 				my( undef, $cmp_name, $left, $right ) = @$condition;
-				if( eval_compare( undef, $cmp_name, $left, $right ) ) {
+				if( $negative xor eval_compare( undef, $cmp_name, $left, $right ) ) {
 					return evaltree( $list, $subtree );
 				}
 			} else {
