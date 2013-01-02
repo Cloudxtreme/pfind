@@ -1094,6 +1094,7 @@ sub evaltree($$) {
 				die;
 			}
 		}
+		return $list;
 	} elsif( $op eq 'CMDDEF' ) {
 		local $after_OR = undef;
 		3 == @tree or die;
