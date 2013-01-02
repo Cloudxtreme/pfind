@@ -938,7 +938,8 @@ compare:
 	| '-eq' | '-ne' | '-lt' | '-le' | '-gt' | '-ge'
 	;
 cond_assignment:
-	STRING ':=' '-if' condition '-then' STRING ca_options ca_default '-fi'	{ [ 'CONDASSIGN', $_[1], ['OPTION', $_[4], $_[6]], @{$_[7]}, @{$_[8]} ] }
+	STRING ':=' '-if' condition '-then' STRING ca_options ca_default '-fi'
+		{ [ 'CONDASSIGN', $_[1], ['OPTION', $_[4], $_[6]], @{$_[7]}, @{$_[8]} ] }
 	;
 ca_options:
 	/* empty */			{ [] }
@@ -952,7 +953,8 @@ ca_default:
 	| '-else' STRING		{ [ ['DEFAULT', $_[2]] ] }
 	;
 if_exp:
-	'-if' condition '-then' exp elsif_options maybe_else_option '-fi'	{ [ 'IF', ['OPTION', $_[2], $_[4]], @{$_[5]}, @{$_[6]} ] }
+	'-if' condition '-then' exp elsif_options maybe_else_option '-fi'
+		{ [ 'IF', ['OPTION', $_[2], $_[4]], @{$_[5]}, @{$_[6]} ] }
 	;
 elsif_options:
 	/* empty */			{ [] }
