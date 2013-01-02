@@ -1054,6 +1054,27 @@ sub evaltree($$) {
 			$previous_list = $list;
 		}
 		return $list;
+	} elsif( $op eq 'IF' ) {
+		local $after_OR = undef;
+		@tree > 0 or die "$op takes at least one arg\n";
+		foreach my $option ( @tree ) {
+			die unless 'ARRAY' eq ref $option;
+			if( $option->[0] eq 'DEFAULT' ) {
+				die unless 2 == @$option;
+				return evaltree( $list, $option->[1] );
+			} elsif( $option->[0] eq 'OPTION' ) {
+				die unless 3 == @$option;
+				my( undef, $condition, $subtree ) = @$option;
+				die unless 4 == @$condition;
+				die unless 'COMPARE' eq $condition->[0];
+				my( undef, $cmp_name, $left, $right ) = @$condition;
+				if( eval_compare( undef, $cmp_name, $left, $right ) ) {
+					return evaltree( $list, $subtree );
+				}
+			} else {
+				die;
+			}
+		}
 	} elsif( $op eq 'CMDDEF' ) {
 		local $after_OR = undef;
 		3 == @tree or die;
