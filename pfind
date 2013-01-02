@@ -26,6 +26,10 @@ my @preload = qw#
 	-cmd -echo %str [ -printf %str\n ]
 	-cmd -echo1 %STR [ -print1 %STR\n ]
 
+	-cmd -warn %WARN_MESSAGE [ -warnf %WARN_MESSAGE\n ]
+	-cmd -abort [ -exit 1 ]
+	-cmd -die %DIE_MESSAGE [ -warn %DIE_MESSAGE -comma -abort ]
+
 	-cmd -kill [ -signal KILL ]
 	-cmd -term [ -signal TERM ]
 	-cmd -hup  [ -signal HUP  ]
@@ -465,6 +469,19 @@ sub cmd_print1($$) {
 	return $list;
 }
 
+sub cmd_warnf($$) {
+	my ($list, $string) = @_;
+	print STDERR process_arg $string;
+	return $list;
+}
+
+sub cmd_exit($$) {
+	my ($list, $exitcode) = @_;
+	$exitcode = process_arg $exitcode;
+	$exitcode =~ /^\d+$/ or die "-exit argument must be numeric\n";
+	exit $exitcode;
+}
+
 sub cmd_signal($$) {
 	my ($list, $signal) = @_;
 	$action_triggered = 1;
@@ -665,6 +682,8 @@ my %cmd0 = (
 my %cmd1 = (
 	"printf"	=> \&cmd_printf,
 	"print1"	=> \&cmd_print1,
+	"warnf"		=> \&cmd_warnf,
+	"exit"		=> \&cmd_exit,
 	"signal"	=> \&cmd_signal,
 	"pidfile"	=> \&cmd_pidfile,
 	"sort"		=> \&cmd_sort,
