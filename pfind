@@ -910,6 +910,7 @@ atom:
 	command_exp
 	| assignment
 	| compare_exp
+	| cond_assignment
 	| if_exp
 	| cmd_definition
 	| block
@@ -935,6 +936,20 @@ compare_exp:
 compare:
 	'-m' | '=@' | '-nm' | '!@' | '=~' | '!~' | '==' | '!='
 	| '-eq' | '-ne' | '-lt' | '-le' | '-gt' | '-ge'
+	;
+cond_assignment:
+	STRING ':=' '-if' condition '-then' STRING ca_options ca_default '-fi'	{ [ 'CONDASSIGN', $_[1], ['OPTION', $_[4], $_[6]], @{$_[7]}, @{$_[8]} ] }
+	;
+ca_options:
+	/* empty */			{ [] }
+	| ca_option ca_options		{ [ $_[1], @{$_[2]} ] }
+	;
+ca_option:
+	elsif condition '-then' STRING	{ ['OPTION', $_[2], $_[4]] }
+	;
+ca_default:
+	/* empty */			{ [] }
+	| '-else' STRING		{ [ ['DEFAULT', $_[2]] ] }
 	;
 if_exp:
 	'-if' condition '-then' exp elsif_options maybe_else_option '-fi'	{ [ 'IF', ['OPTION', $_[2], $_[4]], @{$_[5]}, @{$_[6]} ] }
