@@ -703,7 +703,8 @@ my %cmdkeywords = map { "-" . $_ => 1 } (
 		keys(%cmd0), keys(%cmd1), keys(%cmd2), keys(%cmdm),
 );
 my %keywords = map { $_ => 1 } (
-	",", qw/ -comma ( ) [ ] { } {} ; ! -not -and -a -or -o -quote -q -cmd := /,
+	",", qw/ -comma ( ) [ ] { } {} ; ! -not -and -a -or -o -quote -q -cmd :=
+		-if -then -elif -elsif -elseif -else -fi /,
 	keys(%compare),
 	keys(%cmdkeywords),
 );
@@ -870,6 +871,7 @@ atom:
 	command_exp
 	| assignment
 	| compare_exp
+	| if_exp
 	| cmd_definition
 	| block
 	;
@@ -894,6 +896,28 @@ compare_exp:
 compare:
 	'-m' | '=@' | '-nm' | '!@' | '=~' | '!~' | '==' | '!='
 	| '-eq' | '-ne' | '-lt' | '-le' | '-gt' | '-ge'
+	;
+if_exp:
+	'-if' condition '-then' exp elsif_options maybe_else_option '-fi'	{ [ 'IF', ['OPTION', $_[2], $_[4]], @{$_[5]}, @{$_[6]} ] }
+	;
+elsif_options:
+	/* empty */			{ [] }
+	| elsif_option elsif_options	{ [ $_[1], @{$_[2]} ] }
+	;
+elsif_option:
+	elsif condition '-then' exp	{ ['OPTION', $_[2], $_[4]] }
+	;
+elsif:
+	'-elif'
+	| '-elsif'
+	| '-elseif'
+	;
+maybe_else_option:
+	/* empty */			{ [] }
+	| '-else' exp			{ [ ['DEFAULT', $_[2]] ] }
+	;
+condition:
+	compare_exp
 	;
 block:
 	'(' exp ')'		{ [ 'BLOCK', $_[2] ] }
