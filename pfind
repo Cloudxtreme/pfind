@@ -910,7 +910,6 @@ atom:
 	command_exp
 	| assignment
 	| compare_exp
-	| cond_assignment
 	| if_exp
 	| cmd_definition
 	| block
@@ -928,7 +927,11 @@ strings:
 	| STRING strings	{ [ $_[1], @{$_[2]} ] }
 	;
 assignment:
-	STRING ':=' STRING	{ [ 'ASSIGN', $_[1], $_[3] ] }
+	STRING ':=' assignment_value	{ [ 'ASSIGN', $_[1], $_[3] ] }
+	;
+assignment_value:
+	STRING
+	| ca_value
 	;
 compare_exp:
 	STRING compare STRING	{ [ 'COMPARE', $_[2], $_[1], $_[3] ] }
@@ -937,9 +940,9 @@ compare:
 	'-m' | '=@' | '-nm' | '!@' | '=~' | '!~' | '==' | '!='
 	| '-eq' | '-ne' | '-lt' | '-le' | '-gt' | '-ge'
 	;
-cond_assignment:
-	STRING ':=' '-if' condition '-then' STRING ca_options ca_default '-fi'
-		{ [ 'CONDASSIGN', $_[1], ['OPTION', $_[4], $_[6]], @{$_[7]}, @{$_[8]} ] }
+ca_value:
+	'-if' condition '-then' STRING ca_options ca_default '-fi'
+		{ [ 'IF', ['OPTION', $_[2], $_[4]], @{$_[5]}, @{$_[6]} ] }
 	;
 ca_options:
 	/* empty */			{ [] }
