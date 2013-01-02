@@ -22,7 +22,7 @@ my $NOPID = -1;
 my $HEADERPID = -2;
 my $smarttabheader;
 
-my @preload = qw(
+my @preload = qw#
 	-cmd -echo %str [ -printf %str\n ]
 	-cmd -echo1 %STR [ -print1 %STR\n ]
 
@@ -54,7 +54,7 @@ my @preload = qw(
 		-or %comm =~ %EGREP_ARG -or %name =~ %EGREP_ARG ]
 
 	-cmd -pstree [ -settree -echo \T%ppid\T%pid\T%s\T%tree%name ]
-);
+#;
 
 sub get_full_proc_list() {
 	return $state->{"all"} if exists $state->{"all"};
