@@ -5,7 +5,6 @@ use Data::Dumper;
 use Parse::Yapp;
 use POSIX qw/uname sysconf _SC_PAGESIZE/;
 
-die "pfind is only for linux\n" unless $^O eq "linux";
 my $state = {};
 my $vars = {};
 my $usercmd_args = {};
@@ -29,6 +28,7 @@ my @preload = qw#
 	-cmd -warn %WARN_MESSAGE [ -warnf %WARN_MESSAGE\n ]
 	-cmd -abort [ -exit 1 ]
 	-cmd -die %DIE_MESSAGE [ -warn %DIE_MESSAGE -comma -abort ]
+	-if %UNAME/SYSNAME != Linux -then -die pfind\sis\sonly\sfor\slinux -fi
 
 	-cmd -kill [ -signal KILL ]
 	-cmd -term [ -signal TERM ]
@@ -206,6 +206,16 @@ sub get_status($) {
 	return $out;
 }
 
+sub get_UNAME($) {
+	die unless $NOPID eq shift;
+	my @values = uname;
+	5 == @values or die "uname() must retun 5 values\n";
+	my $out = {};
+	$out->{$_} = shift @values
+		foreach qw/SYSNAME NODENAME RELEASE VERSION MACHINE/;
+	return $out;
+}
+
 sub get_UPTIME($) {
 	die unless $NOPID eq shift;
 	my $line = read_line_from_file "/proc/uptime";
@@ -216,7 +226,7 @@ sub get_UPTIME($) {
 
 sub get_HZ($) {
 	die unless $NOPID eq shift;
-	my $release = (POSIX::uname)[2];
+	my $release = cached_get( $NOPID, "UNAME", "RELEASE" );
 	my $filename = "/boot/config-$release";
 	my $gzname = "/proc/config.gz";
 	if( -f $filename ) {
@@ -252,6 +262,7 @@ my %getters1 = (
 	"stat"	=> \&get_stat,
 	"statm"	=> \&get_statm,
 	"status" => \&get_status,
+	"UNAME"	=> \&get_UNAME,
 	"ENV"	=> sub { $NOPID eq $_[0] ?  { %ENV } : die },
 );
 
