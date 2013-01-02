@@ -340,7 +340,7 @@ sub process_arg($;$) {
 			my $headername = "";
 			if( defined $3 ) {
 				$headername = $3;
-			} elsif( $rest[0] =~ /^\s*\%(\w[\w\/]+)/ ) {
+			} elsif( $rest[0] =~ /^\s*\%(\w[\w\/]*)/ ) {
 				$headername = uc $1;
 			}
 			push @header, $headername;
