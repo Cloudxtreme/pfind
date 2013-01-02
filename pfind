@@ -734,6 +734,14 @@ sub assign($;$) {
 	}
 }
 
+sub check_numeric($$$;$) {
+	my ($arg1, $arg2, $name, $pid) = @_;
+	my $pid_message = ( defined $pid ? " for PID $pid" : "" );
+	die "left operand '$arg1' of $name is not numeric$pid_message\n"
+		unless $arg1 =~ /^[\-\+]?\d+$/;
+	die "right operand '$arg2' of $name is not numeric$pid_message\n"
+		unless $arg2 =~ /^[\-\+]?\d+$/;
+}
 sub eval_compare($$$$) {
 	my ($checklist, $name, $arg1, $arg2) = @_;
 	check_defined_scalar $name;
@@ -741,7 +749,12 @@ sub eval_compare($$$$) {
 	my $code = $compare{$name};
 	$code = $compare{$code} if not ref $code;
 	die $name unless 'CODE' eq ref $code;
-	if( $compare_match{$name} ) {
+	if( not defined $checklist ) { # -if condition
+		$arg1 = process_arg $arg1;
+		$arg2 = process_arg $arg2;
+		check_numeric $arg1, $arg2, $name if $compare_num{$name};
+		return $code->( $arg1, $arg2 );
+	} elsif( $compare_match{$name} ) {
 		my $hashed_arg1 = process_arg( $arg1, $checklist );
 		$arg2 = process_arg $arg2;
 		return [ grep {
@@ -751,12 +764,8 @@ sub eval_compare($$$$) {
 		my $hashed_arg1 = process_arg( $arg1, $checklist );
 		my $hashed_arg2 = process_arg( $arg2, $checklist );
 		if( $compare_num{$name} ) {
-			foreach my $pid ( @$checklist ) {
-				die "left operand '$hashed_arg1->{$pid}' of $name is not numeric for PID $pid\n"
-					unless $hashed_arg1->{$pid} =~ /^[\-\+]?\d+$/;
-				die "right operand '$hashed_arg2->{$pid}' of $name is not numeric for PID $pid\n"
-					unless $hashed_arg2->{$pid} =~ /^[\-\+]?\d+$/;
-			}
+			check_numeric $hashed_arg1->{$_}, $hashed_arg2->{$_}, $name, $_
+				foreach @$checklist;
 		}
 		return [ grep {
 			$code->( $hashed_arg1->{$_}, $hashed_arg2->{$_} )
