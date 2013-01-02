@@ -44,7 +44,7 @@ my @preload = qw(
 
 	%ppid := %stat/ppid
 	%comm := %stat/comm
-	%state := %stat/state
+	%s := %stat/state
 
 	%name := %status/Name
 
@@ -53,7 +53,7 @@ my @preload = qw(
 	-cmd -egrep %EGREP_ARG [ %exe =~ %EGREP_ARG
 		-or %comm =~ %EGREP_ARG -or %name =~ %EGREP_ARG ]
 
-	-cmd -pstree [ -settree -echo \T%ppid\T%pid\T%tree%name ]
+	-cmd -pstree [ -settree -echo \T%ppid\T%pid\T%s\T%tree%name ]
 );
 
 sub get_full_proc_list() {
