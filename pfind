@@ -564,6 +564,7 @@ sub cmd_exec($$@) {
 	}
 	if( defined $braces_index ) {
 		$braces_index or die "'{}' cannot be the first argument of -exec\n";
+		@$checklist or return $checklist;
 		my @cmdline = (
 			map { process_arg $_ } @args[0 .. $braces_index-1],
 			@$checklist,
