@@ -752,7 +752,9 @@ sub assign($;$) {
 	# upper case names are reserved for global (not per-PID) variables
 	die "bad variable name $name: must be all upper or all lower case\n"
 		if $name =~ /[A-Z]/ and $name =~ /[a-z]/;
-	if( not defined $value ) {
+	if( $getters0{$name} or $getters1{$name} ) {
+		die "cannot assign to system variable \%$name\n";
+	} elsif( not defined $value ) {
 		delete $vars->{$name};
 	} elsif( exists $vars->{$name} ) {
 		die "variable \%$name already exists\n";
