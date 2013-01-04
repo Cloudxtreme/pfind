@@ -468,9 +468,9 @@ sub print_table($$$@) {
 }
 
 sub cmd_write($$) {
-	my ($list, $format) = @_;
+	my ($list, $string) = @_;
 	$action_triggered = 1;
-	my $out= process_arg( $format, $list );
+	my $out= process_arg( $string, $list );
 	print join "", map { $out->{$_} } @$list;
 	return $list;
 }
