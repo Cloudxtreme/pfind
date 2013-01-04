@@ -1180,7 +1180,7 @@ sub evaltree($$) {
 
 sub main() {
 	my ($quiet, $dump_tree); # options
-	my $default_cmd = "list";
+	my $default_cmd = "ps";
 	while( @ARGV and $ARGV[0] =~ /^--/ ) {
 		my $option = shift @ARGV;
 		if( $option eq "--" ) {
@@ -1192,8 +1192,8 @@ sub main() {
 		} elsif( $option eq "--dump-keywords" ) {
 			printf "%s\n", join " ", sort keys %keywords;
 			exit 0;
-		} elsif( $option eq "--ps" ) {
-			$default_cmd = "ps";
+		} elsif( $option eq "--list" ) {
+			$default_cmd = "list";
 		} else {
 			die "Unknown option: $option\n";
 		}
