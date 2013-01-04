@@ -366,31 +366,29 @@ sub process_arg($;$) {
 	}
 	my @outlist = ( defined($list) ? @$list : ($NOPID) );
 	my $out = { map { $_ => "" } @outlist };
-	my @rest = ( $arg );
-	while( @rest ) {
-		if( not length $rest[0] ) {
-			shift @rest;
-		} elsif( $rest[0] =~ /^([^\\%]+)(.*)$/ ) {
+	my $rest = "$arg";
+	while( length $rest ) {
+		if( $rest =~ /^([^\\%]+)(.*)$/ ) {
 			$out->{$_} .= $1 for @outlist;
-			$rest[0] = $2;
-		} elsif( $rest[0] =~ /^\\x([01-9a-f]{2})(.*)$/ ) {
+			$rest = $2;
+		} elsif( $rest =~ /^\\x([01-9a-f]{2})(.*)$/ ) {
 			my $add = chr hex $1;
 			$out->{$_} .= $add for @outlist;
-			$rest[0] = $2;
-		} elsif( $rest[0] =~ /^\\0([0-7]*)(.*)$/ ) {
+			$rest = $2;
+		} elsif( $rest =~ /^\\0([0-7]*)(.*)$/ ) {
 			my $num = oct $1;
 			die "too big oct: \\0$1\n" if $num > 255;
 			my $add = chr $num;
 			$out->{$_} .= $add for @outlist;
-			$rest[0] = $2;
-		} elsif( $rest[0] =~ /^\\(.)(.*)$/ ) {
+			$rest = $2;
+		} elsif( $rest =~ /^\\(.)(.*)$/ ) {
 			my $add = $sprintf_escapes{$1} // "\\$1";
 			$out->{$_} .= $add for @outlist;
-			$rest[0] = $2;
-		} elsif( $rest[0] =~ /^%/ ) {
-			$rest[0] = process_value( $list, $out, $rest[0] );
+			$rest = $2;
+		} elsif( $rest =~ /^%/ ) {
+			$rest = process_value( $list, $out, $rest );
 		} else {
-			die "bad string: $rest[0]\n"
+			die "bad string: $rest\n"
 		}
 	}
 	$out = $out->{$NOPID} if not defined $list;
