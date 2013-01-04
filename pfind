@@ -322,13 +322,46 @@ my %sprintf_escapes = (
 	"-"	=> "", # empty string, works as a separator
 );
 
+sub process_value($$$) {
+	my ($list, $out, $string) = @_;
+	$string =~ /^%(([a-zA-Z]\w*)(\/[a-zA-Z]\w*)*)(.*)$/
+		or die "bad func or var syntax: $string\n";
+	my ($exp, $name, $args) = ($1, $2, $3);
+	$string = $4;
+	my @outlist = ( defined($list) ? @$list : ($NOPID) );
+	my $var_is_local = ( $name =~ /^[a-z]/ );
+	die "you cannot use local variables here: $string\n"
+		if $var_is_local and not defined $list;
+	if( exists $vars->{$name} ) {
+		die "\%$name takes no args\n"
+			if defined $args and length $args;
+		my $value = $vars->{$name};
+		check_defined_scalar $value;
+		if( $value =~ /^\\q(.*)$/ ) {
+			$out->{$_} .= $1 for @outlist;
+		} else {
+			my $add = process_arg( $vars->{$name}, $list );
+			$out->{$_} .= $add->{$_} for @outlist;
+		}
+	} else {
+		my ($name, @args) = split /\//, $exp;
+		foreach my $pid ( @outlist ) {
+			$out->{$pid} .= cached_get(
+				( $var_is_local ? $pid : $NOPID ),
+				$name, @args
+			);
+		}
+	}
+	return $string;
+}
+
 sub process_arg($;$) {
 	my ($arg, $list) = @_;
 	# we return hashref (if defined $list) or scalar (else)
 	die $list unless not defined $list or 'ARRAY' eq ref $list;
 	check_defined_scalar $arg;
 	if( $arg =~ /^\\q(.*)$/ ) {
-		# see also process_arg() for \q in variable values
+		# see also process_value() for \q in variable values
 		return( (defined $list) ? { map { $_ => $1 } @$list } : $1 );
 	}
 	my @outlist = ( defined($list) ? @$list : ($NOPID) );
@@ -354,31 +387,8 @@ sub process_arg($;$) {
 			my $add = $sprintf_escapes{$1} // "\\$1";
 			$out->{$_} .= $add for @outlist;
 			$rest[0] = $2;
-		} elsif( $rest[0] =~ /^%(([a-zA-Z]\w*)(\/[a-zA-Z]\w*)*)(.*)$/ ) {
-			my ($exp, $name, $args) = ($1, $2, $3);
-			$rest[0] = $4;
-			my $var_is_local = ( $name =~ /^[a-z]/ );
-			die "you cannot use local variables here: $arg\n"
-				if $var_is_local and not defined $list;
-			if( exists $vars->{$name} ) {
-				die "\%$name takes no args\n"
-					if defined $args and length $args;
-				my $value = $vars->{$name};
-				check_defined_scalar $value;
-				if( $value =~ /^\\q(.*)$/ ) {
-					$out->{$_} .= $1 for @outlist;
-				} else {
-					unshift @rest, $vars->{$name};
-				}
-			} else {
-				my ($name, @args) = split /\//, $exp;
-				foreach my $pid ( @outlist ) {
-					$out->{$pid} .= cached_get(
-						( $var_is_local ? $pid : $NOPID),
-						$name, @args
-					);
-				}
-			}
+		} elsif( $rest[0] =~ /^%/ ) {
+			$rest[0] = process_value( $list, $out, $rest[0] );
 		} else {
 			die "bad string: $rest[0]\n"
 		}
