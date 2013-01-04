@@ -17,13 +17,10 @@ my $action_triggered = undef;
 # $NOPID is a pseudo-PID used when no real PID required/allowed.
 # Also we cache global variables in $state->{$NOPID}
 my $NOPID = -1;
-# another pseudo-PID, used in process_arg:
-my $HEADERPID = -2;
-my $smarttabheader;
 
 my @preload = qw#
-	-cmd -echo %str [ -printf %str\n ]
-	-cmd -echo1 %STR [ -print1 %STR\n ]
+	-cmd -writeln %str [ -write %str\n ]
+	-cmd -writeln1 %STR [ -write1 %STR\n ]
 
 	-cmd -warn %WARN_MESSAGE [ -warnf %WARN_MESSAGE\n ]
 	-cmd -abort [ -exit 1 ]
@@ -58,7 +55,7 @@ my @preload = qw#
 		-or %comm =~ %EGREP_ARG -or %name =~ %EGREP_ARG ]
 
 	%command := %tree%name
-	-cmd -pstree [ -settree -echo \T%ppid\T%pid\T%s\T%command ]
+	-cmd -pstree [ -settree -echo %ppid %pid %s %command ]
 #;
 
 sub get_full_proc_list() {
@@ -312,7 +309,7 @@ sub cmd_list($) {
 }
 
 my %sprintf_escapes = (
-	# \T is smart tab, \q is for -quote, \x is for hex, \0 is for oct
+	# \q is for -quote, \x is for hex, \0 is for oct
 	a	=> "\a",
 	b	=> "\b",
 	e	=> "\e",
@@ -344,23 +341,10 @@ sub process_arg($;$) {
 	my $n = 0; # current field number for smart tabs
 	my %align = ();
 	my $out = { map { $_ => [""] } @outlist };
-	my @header = ( "" );
 	my @rest = ( $arg );
 	while( @rest ) {
 		if( not length $rest[0] ) {
 			shift @rest;
-		} elsif( $rest[0] =~ /^\s*\\T([<>]?)(\((\w+)\))?\s*(.*)$/ ) {
-			$rest[0] = $4;
-			push @{$out->{$_}}, "" for @outlist;
-			$align{$n+1} = $1;
-			my $headername = "";
-			if( defined $3 ) {
-				$headername = $3;
-			} elsif( $rest[0] =~ /^\s*\%(\w[\w\/]*)/ ) {
-				$headername = uc $1;
-			}
-			push @header, $headername;
-			++$n;
 		} elsif( $rest[0] =~ /^([^\\%]+)(.*)$/ ) {
 			$out->{$_}[$n] .= $1 for @outlist;
 			$rest[0] = $2;
@@ -405,78 +389,96 @@ sub process_arg($;$) {
 			die "bad string: $rest[0]\n"
 		}
 	}
-	if( $n ) {
-		$out->{$HEADERPID} = [ @header ];
-		my @maxlengths = (0) x ($n+1);
-		foreach my $pid (@outlist, $HEADERPID) {
-			chomp $out->{$pid}[$n];
-			foreach my $i ( 0 .. $n ) {
-				my $len = length $out->{$pid}[$i];
-				$maxlengths[$i] = $len if $len > $maxlengths[$i];
-			}
-		}
-		my %rightalign = ();
-		foreach my $i ( 0 .. $n ) {
-			if( $align{$i} eq ">" ) {
-				$rightalign{$i} = 1;
-			} elsif( $align{$i} eq "<" ) {
-				$rightalign{$i} = 0;
-			} elsif( $align{$i} eq "" ) {
-				my $numonly = 1;
-				foreach my $pid ( @outlist ) {
-					unless( $out->{$pid}[$i] =~ /^\s*\d+\s*$/ ) {
-						$numonly = 0;
-						last;
-					}
-				}
-				$rightalign{$i} = @outlist ? $numonly : 0;
-			} else {
-				die $i;
-			}
-		}
-		foreach my $pid (@outlist, $HEADERPID) {
-			foreach my $i ( 0 .. $n ) {
-				last if $i == $n and not $rightalign{$i};
-				my $addnum = $maxlengths[$i] - length $out->{$pid}[$i];
-				my $add = " " x $addnum;
-				if( $rightalign{$i} ) {
-					$out->{$pid}[$i] = $add . $out->{$pid}[$i];
-				} else {
-					$out->{$pid}[$i] .= $add;
-				}
-			}
-			$out->{$pid}[$n] .= "\n";
-		}
-		if( 0 == $maxlengths[0] and not $rightalign{1} ) {
-			shift @{$out->{$_}} for( @outlist, $HEADERPID );
-			--$n;
-		}
-	}
 	$out->{$_} = join "  ", @{$out->{$_}} for keys %$out;
-	$smarttabheader = delete $out->{$HEADERPID};
 	$out = $out->{$NOPID} if not defined $list;
 	return $out;
 }
 
-sub cmd_printf($$) {
+sub print_table($$$@) {
+	my ($list, $name, $with_header, @strings) = @_;
+	my $once = not defined $list;
+	$once or 'ARRAY' eq ref($list) or die;
+	die "-$name expects at least one arg\n" unless @strings;
+
+	my $columns = [];
+	my $first_alignment;
+	foreach my $str ( @strings ) {
+		my ($header, $alignment);
+		if( $str =~ /((\w*)(\/\w+)?:)(.+)$/ and length $1 ) {
+			$str = $4;
+			$header = $2;
+			$alignment = $3;
+		}
+		if( $with_header and not defined $header ) {
+			$header = ($str =~ /^%(\w[\w\/]*)$/) ? $1 : "";
+		}
+		$header = uc $header;
+		my @values;
+		if( $once ) {
+			my $s = process_arg $str;
+			@values = ( $s );
+		} else {
+			my $hashed_s = process_arg($str, $list);
+			@values = map { $hashed_s->{$_} } @$list;
+		}
+		my $maxlength = 0;
+		my $allnumeric = 1;
+		foreach ( @values ) {
+			$allnumeric = 0 if $allnumeric and not /^-?\d+$/;
+			my $l = length;
+			$maxlength = $l if $l > $maxlength;
+		}
+		$allnumeric = 0 unless @values;
+		if( $with_header ) {
+			my $l = length $header;
+			$maxlength = $l if $l > $maxlength;
+		}
+		$alignment ||= ( $allnumeric ? "/right" : "/left" );
+		$first_alignment = $alignment if not defined $first_alignment;
+		my @column = @values;
+		unshift @column, $header if $with_header;
+		foreach my $i ( 0 .. $#column ) {
+			my $need = $maxlength - length $column[$i];
+			die if $need < 0;
+			if( $alignment eq "/left" ) {
+				$column[$i] .= " " x $need;
+			} elsif( $alignment eq "/right" ) {
+				$column[$i] = (" " x $need) . $column[$i];
+			} elsif( $alignment eq "/center" ) {
+				my $left = int( $need / 2 );
+				my $right = $need - $left;
+				$column[$i] = (" " x $left) . $column[$i] . (" " x $right);
+			} else {
+				die "unknown alignment: $alignment\n";
+			}
+		}
+		push @$columns, \@column;
+	}
+	my $prefix = ( ($first_alignment eq "/left") ? "" : " " );
+	my $table = "";
+	while( @{$columns->[0]} ) {
+		my @fields;
+		foreach my $c ( @$columns ) {
+			push @fields, shift @$c;
+		}
+		$table .= sprintf "%s%s\n", $prefix, join( "  ", @fields );
+	}
+	print $table;
+	$action_triggered = 1;
+}
+
+sub cmd_write($$) {
 	my ($list, $format) = @_;
 	$action_triggered = 1;
-	$smarttabheader = undef;
 	my $out= process_arg( $format, $list );
-	print $smarttabheader if defined $smarttabheader;
-	$smarttabheader = undef;
 	print join "", map { $out->{$_} } @$list;
 	return $list;
 }
 
-sub cmd_print1($$) {
+sub cmd_write1($$) {
 	my ($list, $string) = @_;
 	$action_triggered = 1;
-	$smarttabheader = undef;
-	my $out = process_arg $string;
-	print $smarttabheader if defined $smarttabheader;
-	$smarttabheader = undef;
-	print $out;
+	print process_arg $string;
 	return $list;
 }
 
@@ -691,8 +693,8 @@ my %cmd0 = (
 	"ancestors"	=> sub { cmd_additions shift, "ancestors", \&inc_parent, undef },
 );
 my %cmd1 = (
-	"printf"	=> \&cmd_printf,
-	"print1"	=> \&cmd_print1,
+	"write"		=> \&cmd_write,
+	"write1"	=> \&cmd_write1,
 	"warnf"		=> \&cmd_warnf,
 	"exit"		=> \&cmd_exit,
 	"signal"	=> \&cmd_signal,
@@ -707,6 +709,10 @@ my %cmd2 = (
 my %cmdm = (
 	"pids"		=> \&cmd_pids,
 	"exec"		=> \&cmd_exec,
+	"print"		=> sub { my $list = shift; print_table( $list, "print",  0, @_); $list },
+	"print1"	=> sub { my $list = shift; print_table( undef, "print1", 0, @_); $list },
+	"echo"		=> sub { my $list = shift; print_table( $list, "echo",   1, @_); $list },
+	"echo1"		=> sub { my $list = shift; print_table( undef, "echo1",  1, @_); $list },
 );
 my %compare = ( # do not firget to edit %compare_match and %compare_num!
 	"-m"	=> sub { $_[0] =~ pattern2re $_[1] },
