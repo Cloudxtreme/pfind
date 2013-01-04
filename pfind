@@ -465,19 +465,11 @@ sub print_table($$$@) {
 	$action_triggered = 1;
 }
 
-sub cmd_write($$) {
+sub do_write($$) {
 	my ($list, $string) = @_;
 	$action_triggered = 1;
-	my $out= process_arg( $string, $list );
-	print join "", map { $out->{$_} } @$list;
-	return $list;
-}
-
-sub cmd_write1($$) {
-	my ($list, $string) = @_;
-	$action_triggered = 1;
-	print process_arg $string;
-	return $list;
+	my $out = process_arg( $string, $list );
+	print( $list ? join "", map { $out->{$_} } @$list : $out );
 }
 
 sub cmd_warnf($$) {
@@ -691,8 +683,8 @@ my %cmd0 = (
 	"ancestors"	=> sub { cmd_additions shift, "ancestors", \&inc_parent, undef },
 );
 my %cmd1 = (
-	"write"		=> \&cmd_write,
-	"write1"	=> \&cmd_write1,
+	"write"		=> sub { my $list = shift; do_write($list, shift); $list },
+	"write1"	=> sub { my $list = shift; do_write(undef, shift); $list },
 	"warnf"		=> \&cmd_warnf,
 	"exit"		=> \&cmd_exit,
 	"signal"	=> \&cmd_signal,
