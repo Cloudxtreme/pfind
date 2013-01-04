@@ -398,16 +398,16 @@ sub print_table($$$@) {
 	my $columns = [];
 	my $first_alignment;
 	foreach my $str ( @strings ) {
-		my ($header, $alignment);
-		if( $str =~ /((\w*)(\/\w+)?:)(.+)$/ and length $1 ) {
+		my $header;
+		my $alignment = "/auto";
+		if( $str =~ /((\w*)(\/\w+)?):(.+)$/ and length $1 ) {
 			$str = $4;
-			$header = $2;
-			$alignment = $3;
+			$header = $2 if length $2;
+			$alignment = $3 ? $3 : "/auto";
 		}
 		if( $with_header and not defined $header ) {
-			$header = ($str =~ /^%(\w[\w\/]*)$/) ? $1 : "";
+			$header = ($str =~ /^%(\w[\w\/]*)$/) ? uc $1 : "";
 		}
-		$header = uc $header;
 		my @values;
 		if( $once ) {
 			my $s = process_arg $str;
@@ -415,6 +415,9 @@ sub print_table($$$@) {
 		} else {
 			my $hashed_s = process_arg($str, $list);
 			@values = map { $hashed_s->{$_} } @$list;
+		}
+		if( $alignment eq "/center" ) {
+			s/^\s*(.*[^\s])\s*$/$1/ foreach @values;
 		}
 		my $maxlength = 0;
 		my $allnumeric = 1;
@@ -428,7 +431,7 @@ sub print_table($$$@) {
 			my $l = length $header;
 			$maxlength = $l if $l > $maxlength;
 		}
-		$alignment ||= ( $allnumeric ? "/right" : "/left" );
+		$alignment = ( $allnumeric ? "/right" : "/left" ) if $alignment eq "/auto";
 		$first_alignment = $alignment if not defined $first_alignment;
 		my @column = @values;
 		unshift @column, $header if $with_header;
