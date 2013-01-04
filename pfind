@@ -340,27 +340,27 @@ sub process_arg($;$) {
 	my @outlist = ( defined($list) ? @$list : ($NOPID) );
 	my $n = 0; # current field number for smart tabs
 	my %align = ();
-	my $out = { map { $_ => [""] } @outlist };
+	my $out = { map { $_ => "" } @outlist };
 	my @rest = ( $arg );
 	while( @rest ) {
 		if( not length $rest[0] ) {
 			shift @rest;
 		} elsif( $rest[0] =~ /^([^\\%]+)(.*)$/ ) {
-			$out->{$_}[$n] .= $1 for @outlist;
+			$out->{$_} .= $1 for @outlist;
 			$rest[0] = $2;
 		} elsif( $rest[0] =~ /^\\x([01-9a-f]{2})(.*)$/ ) {
 			my $add = chr hex $1;
-			$out->{$_}[$n] .= $add for @outlist;
+			$out->{$_} .= $add for @outlist;
 			$rest[0] = $2;
 		} elsif( $rest[0] =~ /^\\0([0-7]*)(.*)$/ ) {
 			my $num = oct $1;
 			die "too big oct: \\0$1\n" if $num > 255;
 			my $add = chr $num;
-			$out->{$_}[$n] .= $add for @outlist;
+			$out->{$_} .= $add for @outlist;
 			$rest[0] = $2;
 		} elsif( $rest[0] =~ /^\\(.)(.*)$/ ) {
 			my $add = $sprintf_escapes{$1} // "\\$1";
-			$out->{$_}[$n] .= $add for @outlist;
+			$out->{$_} .= $add for @outlist;
 			$rest[0] = $2;
 		} elsif( $rest[0] =~ /^%(([a-zA-Z]\w*)(\/[a-zA-Z]\w*)*)(.*)$/ ) {
 			my ($exp, $name, $args) = ($1, $2, $3);
@@ -374,22 +374,21 @@ sub process_arg($;$) {
 				my $value = $vars->{$name};
 				check_defined_scalar $value;
 				if( $value =~ /^\\q(.*)$/ ) {
-					$out->{$_}[$n] .= $1 for @outlist;
+					$out->{$_} .= $1 for @outlist;
 				} else {
 					unshift @rest, $vars->{$name};
 				}
 			} elsif( $var_is_local ) {
-				$out->{$_}[$n] .= get_value_for_printf( $_, $exp )
+				$out->{$_} .= get_value_for_printf( $_, $exp )
 					foreach @outlist;
 			} else {
 				my $add = get_value_for_printf( $NOPID, $exp );
-				$out->{$_}[$n] .= $add foreach @outlist;
+				$out->{$_} .= $add foreach @outlist;
 			}
 		} else {
 			die "bad string: $rest[0]\n"
 		}
 	}
-	$out->{$_} = join "  ", @{$out->{$_}} for keys %$out;
 	$out = $out->{$NOPID} if not defined $list;
 	return $out;
 }
