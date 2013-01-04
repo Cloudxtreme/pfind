@@ -493,7 +493,7 @@ sub cmd_signal($$) {
 	return [ grep { kill $signal, $_ } @$list ];
 }
 
-sub cmd_additions($$$$) {
+sub get_additions($$$$) {
 	my ($checklist, $name, $inc, $once) = @_;
 	$after_OR or die "-$name must come after -or\n";
 	my @out = ();
@@ -677,10 +677,10 @@ my %cmd0 = (
 	"false"	=> sub { return [] },
 	"list"	=> \&cmd_list,
 	"settree"	=> \&cmd_settree,
-	"children"	=> sub { cmd_additions( shift, "children", \&inc_children, 1 ) },
-	"descendants"	=> sub { cmd_additions shift, "descendants", \&inc_children, undef },
-	"parents"	=> sub { cmd_additions( shift, "parents", \&inc_parent, 1 ) },
-	"ancestors"	=> sub { cmd_additions shift, "ancestors", \&inc_parent, undef },
+	"children"	=> sub { get_additions( shift, "children", \&inc_children, 1 ) },
+	"descendants"	=> sub { get_additions( shift, "descendants", \&inc_children, undef ) },
+	"parents"	=> sub { get_additions( shift, "parents", \&inc_parent, 1 ) },
+	"ancestors"	=> sub { get_additions( shift, "ancestors", \&inc_parent, undef ) },
 );
 my %cmd1 = (
 	"write"		=> sub { my $list = shift; do_write($list, shift); $list },
