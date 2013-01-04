@@ -322,12 +322,6 @@ my %sprintf_escapes = (
 	"-"	=> "", # empty string, works as a separator
 );
 
-sub get_value_for_printf($$) {
-	my ($pid, $long_name) = @_;
-	my ($name, @args) = split /\//, $long_name;
-	return cached_get( $pid, $name, @args );
-}
-
 sub process_arg($;$) {
 	my ($arg, $list) = @_;
 	# we return hashref (if defined $list) or scalar (else)
@@ -378,12 +372,14 @@ sub process_arg($;$) {
 				} else {
 					unshift @rest, $vars->{$name};
 				}
-			} elsif( $var_is_local ) {
-				$out->{$_} .= get_value_for_printf( $_, $exp )
-					foreach @outlist;
 			} else {
-				my $add = get_value_for_printf( $NOPID, $exp );
-				$out->{$_} .= $add foreach @outlist;
+				my ($name, @args) = split /\//, $exp;
+				foreach my $pid ( @outlist ) {
+					$out->{$pid} .= cached_get(
+						( $var_is_local ? $pid : $NOPID),
+						$name, @args
+					);
+				}
 			}
 		} else {
 			die "bad string: $rest[0]\n"
