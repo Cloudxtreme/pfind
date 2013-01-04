@@ -332,8 +332,6 @@ sub process_arg($;$) {
 		return( (defined $list) ? { map { $_ => $1 } @$list } : $1 );
 	}
 	my @outlist = ( defined($list) ? @$list : ($NOPID) );
-	my $n = 0; # current field number for smart tabs
-	my %align = ();
 	my $out = { map { $_ => "" } @outlist };
 	my @rest = ( $arg );
 	while( @rest ) {
