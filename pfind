@@ -249,6 +249,7 @@ my %getters1 = (
 	"UNAME"	=> \&get_UNAME,
 	"ENV"	=> sub { return( {%ENV} ) },
 );
+my %getters = ( %getters0, %getters1 );
 
 sub cached_get($$;@) {
 	my ($pid, $name, @args) = @_;
@@ -258,18 +259,16 @@ sub cached_get($$;@) {
 	die "no PID allowed for global vars\n" if $global and $pid ne $NOPID;
 	die "bad PID: $pid for $name\n"
 		if not $global and not ( $pid =~ /^\d+$/ and $pid > 0 );
-	if( exists $getters0{$name} ) {
-		0 == @args or die "variable $name has no subvariables\n";
-		$state->{$pid}{$name} //= $getters0{$name}->($pid);
-		return $state->{$pid}{$name} // "";
-	} elsif( exists $getters1{$name} ) {
-		1 == @args or die "variable $name must have one subvariable\n";
-		my ($arg1) = @args;
-		$state->{$pid}{$name} //= $getters1{$name}->($pid);
-		return $state->{$pid}{$name}{$arg1} // "";
+	die "unknown variable: $name\n" unless exists $getters{$name};
+	my $num = ( exists($getters1{$name}) ? 1 : 0 );
+	@args == $num or die "variable $name has $num subvariable(s)\n";
+	my $gotit;
+	if( $global ) {
+		$gotit = ( $state->{$pid}{$name} //= $getters{$name}->() );
 	} else {
-		die "unknown variable: $name\n";
+		$gotit = ( $state->{$pid}{$name} //= $getters{$name}->($pid) );
 	}
+	return( $num ? $gotit->{$args[0]} : $gotit );
 }
 
 my %pattern2re_cache;
