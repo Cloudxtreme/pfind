@@ -19,29 +19,29 @@ my $action_triggered = undef;
 my $NOPID = -1;
 
 my $preload = <<'PRELOAD';
-	-cmd -writeln %str [ -write '%str\n' ]
-	-cmd -writeln1 %STR [ -write1 '%STR\n' ]
+	-cmd -writeln %str { -write '%str\n' }
+	-cmd -writeln1 %STR { -write1 '%STR\n' }
 
-	-cmd -warn %WARN_MESSAGE [ -warnf '%WARN_MESSAGE\n' ]
-	-cmd -abort [ -exit 1 ]
-	-cmd -die %DIE_MESSAGE [ -warn %DIE_MESSAGE -comma -abort ]
+	-cmd -warn %WARN_MESSAGE { -warnf '%WARN_MESSAGE\n' }
+	-cmd -abort { -exit 1 }
+	-cmd -die %DIE_MESSAGE { -warn %DIE_MESSAGE -comma -abort }
 	-if %UNAME/SYSNAME != Linux -then -die 'pfind is only for linux' -fi
 
-	-cmd -kill [ -signal KILL ]
-	-cmd -term [ -signal TERM ]
-	-cmd -hup  [ -signal HUP  ]
+	-cmd -kill { -signal KILL }
+	-cmd -term { -signal TERM }
+	-cmd -hup  { -signal HUP  }
 
-	-cmd -ps [ -exec ps uf {} ]
-	-cmd -pso %PS_FIELDS [ -exec ps -quote -o %PS_FIELDS {} ]
+	-cmd -ps { -exec ps uf {} }
+	-cmd -pso %PS_FIELDS { -exec ps -quote -o %PS_FIELDS {} }
 
-	-cmd -exe %exe_arg [ %exe == %exe_arg ]
-	-cmd -cwd %cwd_arg [ %cwd == %cwd_arg ]
+	-cmd -exe %exe_arg { %exe == %exe_arg }
+	-cmd -cwd %cwd_arg { %cwd == %cwd_arg }
 
 	%vsz := %statm/size
 	%rss := %statm/resident
 
-	-cmd -kthread [ 0 == %rss ]
-	-cmd -userspace [ ! -kthread ]
+	-cmd -kthread { 0 == %rss }
+	-cmd -userspace { ! -kthread }
 
 	%ppid := %stat/ppid
 	%comm := %stat/comm
@@ -53,13 +53,13 @@ my $preload = <<'PRELOAD';
 
 	%name := %status/Name
 
-	-cmd -grep %GREP_ARG [ %exe -m '*%GREP_ARG*'
-		-or %comm -m '*%GREP_ARG*' -or %name -m '*%GREP_ARG*' ]
-	-cmd -egrep %EGREP_ARG [ %exe '=~' %EGREP_ARG
-		-or %comm '=~' %EGREP_ARG -or %name '=~' %EGREP_ARG ]
+	-cmd -grep %GREP_ARG { %exe -m '*%GREP_ARG*'
+		-or %comm -m '*%GREP_ARG*' -or %name -m '*%GREP_ARG*' }
+	-cmd -egrep %EGREP_ARG { %exe '=~' %EGREP_ARG
+		-or %comm '=~' %EGREP_ARG -or %name '=~' %EGREP_ARG }
 
 	%command := %tree%name
-	-cmd -pstree [ -settree -echo %ppid %pid %state %command ]
+	-cmd -pstree { -settree -echo %ppid %pid %state %command }
 PRELOAD
 
 sub get_full_proc_list() {
