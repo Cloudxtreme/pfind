@@ -945,7 +945,12 @@ my $grammar = <<'GRAMMAR';
 exp:	comma_exp ;
 comma_exp:
 	or_exp
-	| or_exp comma comma_exp	{ unite 'COMMA', $_[1], $_[3] }
+	| or_exp commas			{ [ 'COMMA', $_[1] ] }
+	| or_exp commas comma_exp	{ unite 'COMMA', $_[1], $_[3] }
+	;
+commas:
+	comma
+	| commas comma
 	;
 comma:
 	','
@@ -1142,7 +1147,7 @@ sub evaltree($$) {
 		return lists_substract( $list, $exp_result );
 	} elsif( $op eq 'COMMA' ) {
 		local $after_OR = undef;
-		@tree > 1 or die "$op takes at least two args\n";
+		@tree or die "$op takes at least one arg\n";
 		my $out;
 		foreach( @tree ) {
 			$out = evaltree( $list, $_ );
