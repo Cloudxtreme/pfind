@@ -1289,7 +1289,7 @@ sub mydump($$) {
 sub main() {
 	my $quiet;
 	my %dump_opt = ();
-	my %candump = map { $_ => 1 } qw/tree keywords usercmd/;
+	my %candump = map { $_ => 1 } qw/tree keywords usercmd userfunc/;
 	my $default_cmd = "ps";
 	my $no_preload;
 	my @source_files = </etc/pfind/*.pfind>;
@@ -1342,6 +1342,10 @@ sub main() {
 			push @$out, [ "-$name", $usercmd_args->{$name}, $usercmd_blocks->{$name} ];
 		}
 		mydump( UserCmd => $out );
+	}
+	if( $dump_opt{userfunc} ) {
+		my @out = map { [ "\%$_" => $userfunc_values->{$_} ] } keys %$userfunc_values;
+		mydump( UserFunc => [@out] );
 	}
 	evalcmd( $list, $default_cmd ) unless $quiet or $action_triggered;
 	exit( @$list ? 0 : 1 );
