@@ -405,9 +405,15 @@ sub process_value($$$) {
 		check_defined_scalar $value;
 		if( $value =~ /^\\q(.*)$/ ) {
 			$out->{$_} .= $1 for @outlist;
-		} else {
+		} elsif( $var_is_local ) {
+			$list or die;
 			my $add = process_arg( $vars->{$name}, $list );
 			$out->{$_} .= $add->{$_} for @outlist;
+		} elsif( $list ) {
+			my $add = process_arg $vars->{$name};
+			$out->{$_} .= $add foreach @outlist;
+		} else {
+			$out->{$NOPID} .= process_arg $vars->{$name};
 		}
 	} else {
 		my ($name, @args) = split /\//, $exp;
