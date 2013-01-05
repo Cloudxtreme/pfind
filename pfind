@@ -1060,17 +1060,16 @@ cmd_definition:
 %%
 GRAMMAR
 
+my $grammar_parser = new Parse::Yapp( input => $grammar );
+eval $grammar_parser->Output(
+	classname	=> "grammar_pfind",
+);
+die $@ if $@;
+my $parser = new grammar_pfind;
+
 sub mktree(@) {
 	my @cmdline = @_;
 	push @cmdline, "-true" unless @cmdline;
-
-	my $grammar_parser = new Parse::Yapp( input => $grammar );
-	eval $grammar_parser->Output(
-		classname	=> "grammar_pfind",
-	);
-	die $@ if $@;
-
-	my $parser = new grammar_pfind;
 	my ($lexer, $error_sub) = mklexer(@cmdline);
 	return $parser->YYParse(
 		yylex => $lexer,
@@ -1264,8 +1263,7 @@ sub main() {
 			die "Unknown option: $option\n";
 		}
 	}
-	push @ARGV, "-true" unless @ARGV;
-	my $tree = mktree( @preload, ",", @ARGV );
+	my $tree = [ 'COMMA', mktree(@preload), mktree(@ARGV) ];
 	if( $dump_tree ) {
 		eval q{
 			use Data::Dumper::LispLike;
