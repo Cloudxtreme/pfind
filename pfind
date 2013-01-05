@@ -326,8 +326,9 @@ my %sprintf_escapes = (
 	"-"	=> "", # empty string, works as a separator
 );
 
-sub process_conditional($$$) {
-	my ($list, $out, $conditional) = @_;
+sub process_arg($;$);
+sub process_conditional($$$$) {
+	my ($list, $var_is_local, $out, $conditional) = @_;
 	'ARRAY' eq ref $conditional or die;
 	my @options = @$conditional;
 	'CONDITIONAL' eq shift @options or die;
@@ -366,9 +367,13 @@ sub process_conditional($$$) {
 		curlist_done:
 		die unless defined $curlist;
 		die unless defined $value;
-		if( defined $list ) {
+		if( $var_is_local ) {
+			$list or die;
 			my $add = process_arg( $value, $curlist );
 			$out->{$_} .= $add->{$_} foreach @$curlist;
+		} elsif( $list ) {
+			my $add = process_arg $value;
+			$out->{$_} .= $add foreach @$curlist;
 		} elsif( 1 == @$curlist and -1 == $curlist->[0] ) {
 			$out->{$NOPID} .= process_arg $value;
 		} else {
@@ -394,10 +399,7 @@ sub process_value($$$) {
 			if defined $args and length $args;
 		my $value = $vars->{$name};
 		if( ref $value ) {
-			process_conditional(
-				( $var_is_local ? $list : undef ),
-				$out, $value
-			);
+			process_conditional( $list, $var_is_local, $out, $value);
 			return $string;
 		}
 		check_defined_scalar $value;
