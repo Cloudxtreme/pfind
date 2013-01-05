@@ -264,12 +264,12 @@ sub cached_get($$;@) {
 	if( exists $getters0{$name} ) {
 		0 == @args or die "variable $name has no subvariables\n";
 		$state->{$pid}{$name} //= $getters0{$name}->($pid);
-		return $state->{$pid}{$name} // "(undef)";
+		return $state->{$pid}{$name} // "";
 	} elsif( exists $getters1{$name} ) {
 		1 == @args or die "variable $name must have one subvariable\n";
 		my ($arg1) = @args;
 		$state->{$pid}{$name} //= $getters1{$name}->($pid);
-		return $state->{$pid}{$name}{$arg1} // "(undef)";
+		return $state->{$pid}{$name}{$arg1} // "";
 	} else {
 		die "unknown variable: $name\n";
 	}
