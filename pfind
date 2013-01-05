@@ -8,6 +8,7 @@ use POSIX qw/uname sysconf _SC_PAGESIZE/;
 my @allpids = ();
 my $globalcache = {};
 my $localcache = {};
+my $userfunc_args = {};
 my $userfunc_values = {};
 my $usercmd_args = {};
 my $usercmd_blocks = {};
@@ -809,13 +810,14 @@ $reserved{$_} = "$_ is reserved, please use -quote $_ if you need to use it as s
 	foreach '#', qw( _ + - * \ | / ~ ^ . @ % $ " ' ` );
 
 sub assign($;$) {
-	my ($name, $value) = @_;
+	my ($full_name, $value) = @_;
 	# we do not use process_arg(), this is probably not good
-	check_defined_scalar $name;
+	check_defined_scalar $full_name;
 	# undefined $value will remove userfunc, ref is for conditional assignment
-	$name =~ /^%(\w+)$/ or
-		die "left operand of := must be unquoted userfunc name\n";
-	$name = $1; # drop initial '%'
+	$full_name =~ /^%(\w+)({(.*)})?$/ or
+		die "left operand of := must be unquoted userfunc name with optional args\n";
+	die "empty argument string: $full_name\n" if length($2) and not length($3);
+	my ($name, $args_str) = ($1, $3);
 	$name =~ /^[a-zA-Z]/ or die "userfunc name must start with a letter\n";
 	die "bad userfunc name $name: must be all upper or all lower case\n"
 		if $name =~ /[A-Z]/ and $name =~ /[a-z]/;
@@ -823,10 +825,18 @@ sub assign($;$) {
 		die "cannot assign to system variable \%$name\n";
 	} elsif( not defined $value ) {
 		delete $userfunc_values->{$name};
+		delete $userfunc_args->{$name};
 	} elsif( exists $userfunc_values->{$name} ) {
 		die "userfunc \%$name already exists\n";
 	} else {
 		$userfunc_values->{$name} = $value;
+		if( length $args_str ) {
+			my @args = split /,/, $args_str;
+			s/^%([a-zA-Z]\w*)$/$1/ or die "Bad argument for \%$name: $_\n"
+				foreach @args;
+			die unless @args;
+			$userfunc_args->{$name} = [@args];
+		}
 	}
 }
 
@@ -1344,8 +1354,16 @@ sub main() {
 		mydump( UserCmd => $out );
 	}
 	if( $dump_opt{userfunc} ) {
-		my @out = map { [ "\%$_" => $userfunc_values->{$_} ] } keys %$userfunc_values;
-		mydump( UserFunc => [@out] );
+		$userfunc_values->{$_} or die $_ foreach keys %$userfunc_args;
+		my $out = [];
+		foreach my $name ( keys %$userfunc_values ) {
+			my $args = ( $userfunc_args->{$name} || [] );
+			s/^(.*)$/%$1/ foreach @$args;
+			my $args_str = join( ",", @$args );
+			my $full_name = ( @$args ? sprintf "%%%s{%s}", $name, $args_str : "%$name" );
+			push @$out, [ $full_name => $userfunc_values->{$name} ];
+		}
+		mydump( UserFunc => $out );
 	}
 	evalcmd( $list, $default_cmd ) unless $quiet or $action_triggered;
 	exit( @$list ? 0 : 1 );
