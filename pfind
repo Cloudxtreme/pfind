@@ -6,6 +6,7 @@ use Parse::Yapp;
 use POSIX qw/uname sysconf _SC_PAGESIZE/;
 
 my @allpids = ();
+my $globalcache = {};
 my $localcache = {};
 my $vars = {};
 my $usercmd_args = {};
@@ -16,7 +17,6 @@ my $previous_list;
 our $after_OR = undef;
 my $action_triggered = undef;
 # $NOPID is a pseudo-PID used when no real PID required/allowed.
-# Also we cache global variables in $localcache->{$NOPID}
 my $NOPID = -1;
 
 my $preload = <<'PRELOAD';
@@ -264,7 +264,7 @@ sub cached_get($$;@) {
 	@args == $num or die "variable $name has $num subvariable(s)\n";
 	my $gotit;
 	if( $global ) {
-		$gotit = ( $localcache->{$pid}{$name} //= $getters{$name}->() );
+		$gotit = ( $globalcache->{$name} //= $getters{$name}->() );
 	} else {
 		$gotit = ( $localcache->{$pid}{$name} //= $getters{$name}->($pid) );
 	}
