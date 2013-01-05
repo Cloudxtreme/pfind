@@ -45,7 +45,11 @@ my @preload = qw#
 
 	%ppid := %stat/ppid
 	%comm := %stat/comm
+
+	%nice := %stat/nice
+	%nice_flag := [ %nice -lt 0 ? < : %nice -gt 0 ? N : \- ]
 	%s := %stat/state
+	%state := %s%nice_flag
 
 	%name := %status/Name
 
@@ -55,7 +59,7 @@ my @preload = qw#
 		-or %comm =~ %EGREP_ARG -or %name =~ %EGREP_ARG ]
 
 	%command := %tree%name
-	-cmd -pstree [ -settree -echo %ppid %pid %s %command ]
+	-cmd -pstree [ -settree -echo %ppid %pid %state %command ]
 #;
 
 sub get_full_proc_list() {
