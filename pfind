@@ -5,6 +5,7 @@ use Data::Dumper;
 use Parse::Yapp;
 use POSIX qw/uname sysconf _SC_PAGESIZE/;
 
+my @allpids = ();
 my $state = {};
 my $vars = {};
 my $usercmd_args = {};
@@ -63,15 +64,14 @@ my $preload = <<'PRELOAD';
 PRELOAD
 
 sub get_full_proc_list() {
-	return $state->{"all"} if exists $state->{"all"};
-	my $list = [];
+	return @allpids if @allpids;
 	opendir PROC, "/proc" or die $!;
 	while( readdir PROC ) {
-		push @$list, $_ if /^\d+$/;
+		push @allpids, $_ if /^\d+$/;
 	}
 	closedir PROC or die $!;
-	$list = [ sort { $a <=> $b } @$list ];
-	return ( $state->{"all"} = $list );
+	@allpids = sort { $a <=> $b } @allpids;
+	return @allpids;
 }
 
 sub check_defined_scalar($) {
@@ -740,7 +740,7 @@ sub cmd_settree($) {
 			push @{$children->{0}}, $pid;
 		}
 	}
-	$state->{$_}{"tree"} = "" foreach @{$state->{"all"}};
+	$state->{$_}{"tree"} = "" foreach get_full_proc_list();
 	my @sorted = do_settree( $children, 0, "" );
 	return \@sorted;
 }
@@ -1326,7 +1326,7 @@ sub main() {
 		print Data::Dumper->Dump( [$tree], ["SyntaxTree"] );
 		exit 0;
 	}
-	my $list = evaltree( get_full_proc_list(), $tree );
+	my $list = evaltree( [ get_full_proc_list() ], $tree );
 	evalcmd( $list, $default_cmd ) unless $quiet or $action_triggered;
 	exit( @$list ? 0 : 1 );
 }
