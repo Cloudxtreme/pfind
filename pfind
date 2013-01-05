@@ -8,7 +8,7 @@ use POSIX qw/uname sysconf _SC_PAGESIZE/;
 my @allpids = ();
 my $globalcache = {};
 my $localcache = {};
-my $vars = {};
+my $userfunc_values = {};
 my $usercmd_args = {};
 my $usercmd_blocks = {};
 # a copy of previous expression's result
@@ -376,10 +376,10 @@ sub process_value($$$) {
 	my $var_is_local = ( $name =~ /^[a-z]/ );
 	die "you cannot use local variables here: $string\n"
 		if $var_is_local and not defined $list;
-	if( exists $vars->{$name} ) {
+	if( exists $userfunc_values->{$name} ) {
 		die "\%$name takes no args\n"
 			if defined $args and length $args;
-		my $value = $vars->{$name};
+		my $value = $userfunc_values->{$name};
 		if( ref $value ) {
 			process_conditional( $list, $var_is_local, $out, $value);
 			return $string;
@@ -389,13 +389,13 @@ sub process_value($$$) {
 			$out->{$_} .= $1 for @outlist;
 		} elsif( $var_is_local ) {
 			$list or die;
-			my $add = process_arg( $vars->{$name}, $list );
+			my $add = process_arg( $userfunc_values->{$name}, $list );
 			$out->{$_} .= $add->{$_} for @outlist;
 		} elsif( $list ) {
-			my $add = process_arg $vars->{$name};
+			my $add = process_arg $userfunc_values->{$name};
 			$out->{$_} .= $add foreach @outlist;
 		} else {
-			$out->{$NOPID} .= process_arg $vars->{$name};
+			$out->{$NOPID} .= process_arg $userfunc_values->{$name};
 		}
 	} else {
 		my ($name, @args) = split /\//, $exp;
@@ -415,7 +415,7 @@ sub process_arg($;$) {
 	die $list unless not defined $list or 'ARRAY' eq ref $list;
 	check_defined_scalar $arg;
 	if( $arg =~ /^\\q(.*)$/ ) {
-		# see also process_value() for \q in variable values
+		# see also process_value() for \q in userfunc values
 		return( (defined $list) ? { map { $_ => $1 } @$list } : $1 );
 	}
 	my @outlist = ( defined($list) ? @$list : ($NOPID) );
@@ -812,22 +812,21 @@ sub assign($;$) {
 	my ($name, $value) = @_;
 	# we do not use process_arg(), this is probably not good
 	check_defined_scalar $name;
-	# undefined $value will remove variable, ref is for conditional assignment
+	# undefined $value will remove userfunc, ref is for conditional assignment
 	$name =~ /^%(\w+)$/ or
-		die "left operand of := must be unquoted variable name\n";
+		die "left operand of := must be unquoted userfunc name\n";
 	$name = $1; # drop initial '%'
-	$name =~ /^[a-zA-Z]/ or die "variable name must start with a letter\n";
-	# upper case names are reserved for global (not per-PID) variables
-	die "bad variable name $name: must be all upper or all lower case\n"
+	$name =~ /^[a-zA-Z]/ or die "userfunc name must start with a letter\n";
+	die "bad userfunc name $name: must be all upper or all lower case\n"
 		if $name =~ /[A-Z]/ and $name =~ /[a-z]/;
 	if( $getters0{$name} or $getters1{$name} ) {
 		die "cannot assign to system variable \%$name\n";
 	} elsif( not defined $value ) {
-		delete $vars->{$name};
-	} elsif( exists $vars->{$name} ) {
-		die "variable \%$name already exists\n";
+		delete $userfunc_values->{$name};
+	} elsif( exists $userfunc_values->{$name} ) {
+		die "userfunc \%$name already exists\n";
 	} else {
-		$vars->{$name} = $value;
+		$userfunc_values->{$name} = $value;
 	}
 }
 
@@ -846,7 +845,7 @@ sub eval_compare($$$$) {
 	my $code = $compare{$name};
 	$code = $compare{$code} if not ref $code;
 	die $name unless 'CODE' eq ref $code;
-	if( not defined $checklist ) { # -if condition or conditional assignment to global variable
+	if( not defined $checklist ) { # -if condition or conditional assignment to global userfunc
 		$arg1 = process_arg $arg1;
 		$arg2 = process_arg $arg2;
 		check_numeric $arg1, $arg2, $name if $compare_num{$name};
@@ -1104,7 +1103,7 @@ sub evalcmd($$@) {
 		}
 		my $out = evaltree( $list, $usercmd_blocks->{$name} );
 		foreach my $i ( 0 .. $num-1 ) {
-			assign( $usercmd_args->{$name}[$i] ); # remove var
+			assign( $usercmd_args->{$name}[$i] ); # remove arg
 		}
 		return $out;
 	} else {
