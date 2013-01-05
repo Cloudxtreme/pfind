@@ -1274,6 +1274,18 @@ sub parse_conf(@) {
 	return @out;
 }
 
+sub mydump($$) {
+	my( $name, $value ) = @_;
+	eval q{
+		use Data::Dumper::LispLike;
+		print "$name: " . dumplisp $value;
+		exit 0;
+	};
+	local $Data::Dumper::Indent = 1;
+	print Data::Dumper->Dump( [$value], [$name] );
+	exit 0;
+}
+
 sub main() {
 	my ($quiet, $dump_tree); # options
 	my $default_cmd = "ps";
@@ -1312,14 +1324,7 @@ sub main() {
 	push @subtrees, mktree( @ARGV );
 	my $tree = [ 'COMMA', @subtrees ];
 	if( $dump_tree ) {
-		eval q{
-			use Data::Dumper::LispLike;
-			print dumplisp $tree;
-			exit 0;
-		};
-		local $Data::Dumper::Indent = 1;
-		print Data::Dumper->Dump( [$tree], ["SyntaxTree"] );
-		exit 0;
+		mydump( SyntaxTree => $tree );
 	}
 	my $list = evaltree( [ get_all_pids() ], $tree );
 	evalcmd( $list, $default_cmd ) unless $quiet or $action_triggered;
