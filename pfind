@@ -373,6 +373,15 @@ sub process_value($$$) {
 		or die "bad func or var syntax: $string\n";
 	my ($exp, $name, $subvars_str) = ($1, $2, $3);
 	$string = $4;
+	my @args = ();
+	if( $string =~ /^{/ ) {
+		$string =~ /^\{([%\w\/,\-\+\*]*)\}(.*)$/
+			or die "bad arguments syntax: $string\n";
+		$string = $2;
+		if( length $1 ) {
+			@args = split /,/, $1;
+		}
+	}
 	my @outlist = ( defined($list) ? @$list : ($NOPID) );
 	my $var_is_local = ( $name =~ /^[a-z]/ );
 	die "you cannot use local variables here: $string\n"
@@ -381,8 +390,21 @@ sub process_value($$$) {
 		die "\%$name takes no subvars\n"
 			if defined $subvars_str and length $subvars_str;
 		my $value = $userfunc_values->{$name};
+		my $need_args_ref = ( $userfunc_args->{$name} || [] );
+		my @need_args = @$need_args_ref;
+		if( @args > @need_args ) {
+			die "%$name: too many arguments\n";
+		} elsif( @args < @need_args ) {
+			die "%$name: not enough arguments\n";
+		} else {
+			@args == @need_args or die;
+			foreach my $i ( 0 .. $#need_args ) {
+				assign( "%$need_args[$i]", $args[$i] );
+			}
+		}
 		if( ref $value ) {
 			process_conditional( $list, $var_is_local, $out, $value);
+			assign( "%$_" ) foreach @need_args;
 			return $string;
 		}
 		check_defined_scalar $value;
@@ -398,8 +420,10 @@ sub process_value($$$) {
 		} else {
 			$out->{$NOPID} .= process_arg $userfunc_values->{$name};
 		}
+		assign( "%$_" ) foreach @need_args;
 	} else {
 		my ($name, @subvars) = split /\//, $exp;
+		die "system variables cannot have arguments: %$name\n" if @args;
 		foreach my $pid ( @outlist ) {
 			$out->{$pid} .= cached_get(
 				( $var_is_local ? $pid : $NOPID ),
@@ -815,7 +839,7 @@ sub assign($;$) {
 	check_defined_scalar $full_name;
 	# undefined $value will remove userfunc, ref is for conditional assignment
 	$full_name =~ /^%(\w+)({(.*)})?$/ or
-		die "left operand of := must be unquoted userfunc name with optional args\n";
+		die "left operand of := must be unquoted userfunc name with optional args: $full_name\n";
 	die "empty argument string: $full_name\n" if length($2) and not length($3);
 	my ($name, $args_str) = ($1, $3);
 	$name =~ /^[a-zA-Z]/ or die "userfunc name must start with a letter\n";
