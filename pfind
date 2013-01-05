@@ -1297,6 +1297,8 @@ sub parse_conf(@) {
 sub main() {
 	my ($quiet, $dump_tree); # options
 	my $default_cmd = "ps";
+	my $no_preload;
+	my @source_files;
 	while( @ARGV and $ARGV[0] =~ /^--/ ) {
 		my $option = shift @ARGV;
 		if( $option eq "--" ) {
@@ -1310,11 +1312,20 @@ sub main() {
 			exit 0;
 		} elsif( $option eq "--list" ) {
 			$default_cmd = "list";
+		} elsif( $option eq "--no-preload" ) {
+			$no_preload = 1;
+		} elsif( $option eq "--source" ) {
+			@ARGV or die "no filename after --source\n";
+			push @source_files, shift @ARGV;
 		} else {
 			die "Unknown option: $option\n";
 		}
 	}
-	my $tree = [ 'COMMA', mktree(parse_conf split /\n/, $preload), mktree(@ARGV) ];
+	my @subtrees;
+	push @subtrees, mktree( parse_conf split /\n/, $preload ) unless $no_preload;
+	push @subtrees, mktree( parse_conf read_file $_ ) foreach @source_files;
+	push @subtrees, mktree( @ARGV );
+	my $tree = [ 'COMMA', @subtrees ];
 	if( $dump_tree ) {
 		eval q{
 			use Data::Dumper::LispLike;
