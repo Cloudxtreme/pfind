@@ -311,7 +311,7 @@ my %sprintf_escapes = (
 
 sub process_arg($;$);
 sub process_conditional($$$$) {
-	my ($list, $var_is_local, $out, $conditional) = @_;
+	my ($list, $is_local, $out, $conditional) = @_;
 	'ARRAY' eq ref $conditional or die;
 	my @options = @$conditional;
 	'CONDITIONAL' eq shift @options or die;
@@ -350,7 +350,7 @@ sub process_conditional($$$$) {
 		curlist_done:
 		die unless defined $curlist;
 		die unless defined $value;
-		if( $var_is_local ) {
+		if( $is_local ) {
 			$list or die;
 			my $add = process_arg( $value, $curlist );
 			$out->{$_} .= $add->{$_} foreach @$curlist;
@@ -383,9 +383,9 @@ sub process_value($$$) {
 		}
 	}
 	my @outlist = ( defined($list) ? @$list : ($NOPID) );
-	my $var_is_local = ( $name =~ /^[a-z]/ );
+	my $is_local = ( $name =~ /^[a-z]/ );
 	die "you cannot use local variables here: $string\n"
-		if $var_is_local and not defined $list;
+		if $is_local and not defined $list;
 	if( exists $userfunc_values->{$name} ) {
 		die "\%$name takes no subvars\n"
 			if defined $subvars_str and length $subvars_str;
@@ -403,14 +403,14 @@ sub process_value($$$) {
 			}
 		}
 		if( ref $value ) {
-			process_conditional( $list, $var_is_local, $out, $value);
+			process_conditional( $list, $is_local, $out, $value);
 			assign( "%$_" ) foreach @need_args;
 			return $string;
 		}
 		check_defined_scalar $value;
 		if( $value =~ /^\\q(.*)$/ ) {
 			$out->{$_} .= $1 for @outlist;
-		} elsif( $var_is_local ) {
+		} elsif( $is_local ) {
 			$list or die;
 			my $add = process_arg( $userfunc_values->{$name}, $list );
 			$out->{$_} .= $add->{$_} for @outlist;
@@ -426,7 +426,7 @@ sub process_value($$$) {
 		die "system variables cannot have arguments: %$name\n" if @args;
 		foreach my $pid ( @outlist ) {
 			$out->{$pid} .= cached_get(
-				( $var_is_local ? $pid : $NOPID ),
+				( $is_local ? $pid : $NOPID ),
 				$name, @subvars,
 			);
 		}
