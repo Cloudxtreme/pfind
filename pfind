@@ -18,21 +18,21 @@ my $action_triggered = undef;
 # Also we cache global variables in $state->{$NOPID}
 my $NOPID = -1;
 
-my @preload = qw#
-	-cmd -writeln %str [ -write %str\n ]
-	-cmd -writeln1 %STR [ -write1 %STR\n ]
+my $preload = <<'PRELOAD';
+	-cmd -writeln %str [ -write '%str\n' ]
+	-cmd -writeln1 %STR [ -write1 '%STR\n' ]
 
-	-cmd -warn %WARN_MESSAGE [ -warnf %WARN_MESSAGE\n ]
+	-cmd -warn %WARN_MESSAGE [ -warnf '%WARN_MESSAGE\n' ]
 	-cmd -abort [ -exit 1 ]
 	-cmd -die %DIE_MESSAGE [ -warn %DIE_MESSAGE -comma -abort ]
-	-if %UNAME/SYSNAME != Linux -then -die pfind\sis\sonly\sfor\slinux -fi
+	-if %UNAME/SYSNAME != Linux -then -die 'pfind is only for linux' -fi
 
 	-cmd -kill [ -signal KILL ]
 	-cmd -term [ -signal TERM ]
 	-cmd -hup  [ -signal HUP  ]
 
 	-cmd -ps [ -exec ps uf {} ]
-	-cmd -pso %PS_FIELDS [ -exec ps -o\- %PS_FIELDS {} ]
+	-cmd -pso %PS_FIELDS [ -exec ps -quote -o %PS_FIELDS {} ]
 
 	-cmd -exe %exe_arg [ %exe == %exe_arg ]
 	-cmd -cwd %cwd_arg [ %cwd == %cwd_arg ]
@@ -47,20 +47,20 @@ my @preload = qw#
 	%comm := %stat/comm
 
 	%nice := %stat/nice
-	%nice_flag := [ %nice -lt 0 ? < : %nice -gt 0 ? N : \- ]
+	%nice_flag := [ %nice -lt 0 ? '<' : %nice -gt 0 ? N : '' ]
 	%s := %stat/state
 	%state := %s%nice_flag
 
 	%name := %status/Name
 
-	-cmd -grep %GREP_ARG [ %exe -m *%GREP_ARG*
-		-or %comm -m *%GREP_ARG* -or %name -m *%GREP_ARG* ]
-	-cmd -egrep %EGREP_ARG [ %exe =~ %EGREP_ARG
-		-or %comm =~ %EGREP_ARG -or %name =~ %EGREP_ARG ]
+	-cmd -grep %GREP_ARG [ %exe -m '*%GREP_ARG*'
+		-or %comm -m '*%GREP_ARG*' -or %name -m '*%GREP_ARG*' ]
+	-cmd -egrep %EGREP_ARG [ %exe '=~' %EGREP_ARG
+		-or %comm '=~' %EGREP_ARG -or %name '=~' %EGREP_ARG ]
 
 	%command := %tree%name
 	-cmd -pstree [ -settree -echo %ppid %pid %state %command ]
-#;
+PRELOAD
 
 sub get_full_proc_list() {
 	return $state->{"all"} if exists $state->{"all"};
@@ -1248,6 +1248,38 @@ sub evaltree($$) {
 	}
 }
 
+sub parse_conf(@) {
+	my @out = ();
+	conf_line:
+	foreach my $line ( @_ ) {
+		check_defined_scalar $line;
+		chomp $line;
+		while( length $line ) {
+			if( $line =~ /^\s+(.*)$/ ) {
+				$line = $1;
+			} elsif( $line =~ /^#/ ) {
+				next conf_line;
+			} elsif( $line =~ /^([\w%\/\-\(\){}\[\]\?:=\!]+)(.*)$/ ) {
+				push @out, $1;
+				$line = $2;
+				if( length($line) and not $line =~ /^\s/ ) {
+					die "unexpected character after token here: $line\n";
+				}
+			} elsif( $line =~ /^"/ ) {
+				die "double quotes  are not allowed: $line\n";
+			} elsif( $line =~ /^'/ ) {
+				$line =~ /^'(([^\\']|\\[\w\-\\])*)'(.*)$/
+					or die "bad line after `'`: $line\n";
+				push @out, $1;
+				$line = $3;
+			} else {
+				die "unexpected character here: $line\n";
+			}
+		}
+	}
+	return @out;
+}
+
 sub main() {
 	my ($quiet, $dump_tree); # options
 	my $default_cmd = "ps";
@@ -1268,7 +1300,7 @@ sub main() {
 			die "Unknown option: $option\n";
 		}
 	}
-	my $tree = [ 'COMMA', mktree(@preload), mktree(@ARGV) ];
+	my $tree = [ 'COMMA', mktree(parse_conf split /\n/, $preload), mktree(@ARGV) ];
 	if( $dump_tree ) {
 		eval q{
 			use Data::Dumper::LispLike;
