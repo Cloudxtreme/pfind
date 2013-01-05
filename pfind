@@ -371,15 +371,15 @@ sub process_value($$$) {
 	my ($list, $out, $string) = @_;
 	$string =~ /^%(([a-zA-Z]\w*)(\/[a-zA-Z]\w*)*)(.*)$/
 		or die "bad func or var syntax: $string\n";
-	my ($exp, $name, $args) = ($1, $2, $3);
+	my ($exp, $name, $subvars_str) = ($1, $2, $3);
 	$string = $4;
 	my @outlist = ( defined($list) ? @$list : ($NOPID) );
 	my $var_is_local = ( $name =~ /^[a-z]/ );
 	die "you cannot use local variables here: $string\n"
 		if $var_is_local and not defined $list;
 	if( exists $userfunc_values->{$name} ) {
-		die "\%$name takes no args\n"
-			if defined $args and length $args;
+		die "\%$name takes no subvars\n"
+			if defined $subvars_str and length $subvars_str;
 		my $value = $userfunc_values->{$name};
 		if( ref $value ) {
 			process_conditional( $list, $var_is_local, $out, $value);
@@ -399,11 +399,11 @@ sub process_value($$$) {
 			$out->{$NOPID} .= process_arg $userfunc_values->{$name};
 		}
 	} else {
-		my ($name, @args) = split /\//, $exp;
+		my ($name, @subvars) = split /\//, $exp;
 		foreach my $pid ( @outlist ) {
 			$out->{$pid} .= cached_get(
 				( $var_is_local ? $pid : $NOPID ),
-				$name, @args
+				$name, @subvars,
 			);
 		}
 	}
