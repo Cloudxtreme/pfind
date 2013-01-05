@@ -713,6 +713,14 @@ sub cmd_tail($$) {
 	return [ @$checklist[$total-$num .. $total-1] ];
 }
 
+sub parse_conf(@);
+sub mktree(@);
+sub evaltree($$);
+sub cmd_source($$) {
+	my ($list, $path) = @_;
+	return evaltree( $list, mktree parse_conf read_file process_arg $path );
+}
+
 sub do_settree($$$);
 sub do_settree($$$) {
 	my ($children, $pid, $prefix ) = @_;
@@ -771,6 +779,7 @@ my %cmd1 = (
 	"sort"		=> \&cmd_sort,
 	"head"		=> \&cmd_head,
 	"tail"		=> \&cmd_tail,
+	"source"	=> \&cmd_source,
 );
 my %cmd2 = (
 	# reserved for user-defined commands
@@ -1136,7 +1145,6 @@ sub lists_add($$) {
 	return [ @$arg1, @addition ];
 }
 
-sub evaltree($$);
 sub evaltree($$) {
 	my ($list_ref, $tree_ref) = @_;
 	'ARRAY' eq ref $tree_ref or die;
@@ -1265,7 +1273,7 @@ sub parse_conf(@) {
 				$line = $1;
 			} elsif( $line =~ /^#/ ) {
 				next conf_line;
-			} elsif( $line =~ /^([\w%\/\-\(\){}\[\]\?:=\!]+)(.*)$/ ) {
+			} elsif( $line =~ /^([\w%\/\-\(\){}\[\]\?:=\!,]+)(.*)$/ ) {
 				push @out, $1;
 				$line = $2;
 				if( length($line) and not $line =~ /^\s/ ) {
