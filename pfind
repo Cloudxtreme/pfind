@@ -374,7 +374,7 @@ sub process_value($$$) {
 	my ($exp, $name, $subvars_str) = ($1, $2, $3);
 	$string = $4;
 	my @args = ();
-	if( $string =~ /^{/ ) {
+	if( $string =~ /^\{/ ) {
 		$string =~ /^\{([%\w\/,\-\+\*]*)\}(.*)$/
 			or die "bad arguments syntax: $string\n";
 		$string = $2;
