@@ -6,7 +6,7 @@ use Parse::Yapp;
 use POSIX qw/uname sysconf _SC_PAGESIZE/;
 
 my @allpids = ();
-my $state = {};
+my $localcache = {};
 my $vars = {};
 my $usercmd_args = {};
 my $usercmd_blocks = {};
@@ -16,7 +16,7 @@ my $previous_list;
 our $after_OR = undef;
 my $action_triggered = undef;
 # $NOPID is a pseudo-PID used when no real PID required/allowed.
-# Also we cache global variables in $state->{$NOPID}
+# Also we cache global variables in $localcache->{$NOPID}
 my $NOPID = -1;
 
 my $preload = <<'PRELOAD';
@@ -264,9 +264,9 @@ sub cached_get($$;@) {
 	@args == $num or die "variable $name has $num subvariable(s)\n";
 	my $gotit;
 	if( $global ) {
-		$gotit = ( $state->{$pid}{$name} //= $getters{$name}->() );
+		$gotit = ( $localcache->{$pid}{$name} //= $getters{$name}->() );
 	} else {
-		$gotit = ( $state->{$pid}{$name} //= $getters{$name}->($pid) );
+		$gotit = ( $localcache->{$pid}{$name} //= $getters{$name}->($pid) );
 	}
 	return( $num ? $gotit->{$args[0]} : $gotit );
 }
@@ -711,7 +711,7 @@ sub do_settree($$$) {
 	while( @mychildren ) {
 		my $child = shift @mychildren;
 		my $childprefix = $pid ? "$prefix \\_ " : $prefix;
-		$state->{$child}{"tree"} = $childprefix;
+		$localcache->{$child}{"tree"} = $childprefix;
 		push @out, $child;
 		my $nextprefix =
 			(not $pid) ? $prefix
@@ -736,7 +736,7 @@ sub cmd_settree($) {
 			push @{$children->{0}}, $pid;
 		}
 	}
-	$state->{$_}{"tree"} = "" foreach get_full_proc_list();
+	$localcache->{$_}{"tree"} = "" foreach get_full_proc_list();
 	my @sorted = do_settree( $children, 0, "" );
 	return \@sorted;
 }
