@@ -1289,7 +1289,7 @@ sub mydump($$) {
 sub main() {
 	my $quiet;
 	my %dump_opt = ();
-	my %candump = map { $_ => 1 } qw/ tree keywords /;
+	my %candump = map { $_ => 1 } qw/tree keywords usercmd/;
 	my $default_cmd = "ps";
 	my $no_preload;
 	my @source_files = </etc/pfind/*.pfind>;
@@ -1334,6 +1334,15 @@ sub main() {
 	my $tree = [ 'COMMA', @subtrees ];
 	$dump_opt{tree} and mydump( SyntaxTree => $tree );
 	my $list = evaltree( [ get_all_pids() ], $tree );
+	if( $dump_opt{usercmd} ) {
+		$usercmd_args->{$_} or die $_ foreach keys %$usercmd_blocks;
+		$usercmd_blocks->{$_} or die $_ foreach keys %$usercmd_args;
+		my $out = [];
+		foreach my $name ( keys %$usercmd_args ) {
+			push @$out, [ "-$name", $usercmd_args->{$name}, $usercmd_blocks->{$name} ];
+		}
+		mydump( UserCmd => $out );
+	}
 	evalcmd( $list, $default_cmd ) unless $quiet or $action_triggered;
 	exit( @$list ? 0 : 1 );
 }
