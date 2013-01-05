@@ -63,7 +63,7 @@ my $preload = <<'PRELOAD';
 	-cmd -pstree { -settree -echo %ppid %pid %state %command }
 PRELOAD
 
-sub get_full_proc_list() {
+sub get_all_pids() {
 	return @allpids if @allpids;
 	opendir PROC, "/proc" or die $!;
 	while( readdir PROC ) {
@@ -736,7 +736,7 @@ sub cmd_settree($) {
 			push @{$children->{0}}, $pid;
 		}
 	}
-	$localcache->{$_}{"tree"} = "" foreach get_full_proc_list();
+	$localcache->{$_}{"tree"} = "" foreach get_all_pids();
 	my @sorted = do_settree( $children, 0, "" );
 	return \@sorted;
 }
@@ -1322,7 +1322,7 @@ sub main() {
 		print Data::Dumper->Dump( [$tree], ["SyntaxTree"] );
 		exit 0;
 	}
-	my $list = evaltree( [ get_full_proc_list() ], $tree );
+	my $list = evaltree( [ get_all_pids() ], $tree );
 	evalcmd( $list, $default_cmd ) unless $quiet or $action_triggered;
 	exit( @$list ? 0 : 1 );
 }
