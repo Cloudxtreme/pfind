@@ -1298,7 +1298,12 @@ sub main() {
 	my ($quiet, $dump_tree); # options
 	my $default_cmd = "ps";
 	my $no_preload;
-	my @source_files;
+	my @source_files = </etc/pfind/*.pfind>;
+	if( length $ENV{HOME} ) {
+		my $path = $ENV{HOME} . "/.pfind";
+		push @source_files, $path if -f $path;
+		push @source_files, <$path/*.pfind>;
+	}
 	while( @ARGV and $ARGV[0] =~ /^--/ ) {
 		my $option = shift @ARGV;
 		if( $option eq "--" ) {
