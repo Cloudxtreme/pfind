@@ -74,20 +74,6 @@ sub get_full_proc_list() {
 	return ( $state->{"all"} = $list );
 }
 
-sub check_list($) {
-	my $list = shift;
-	if( not defined $list ) {
-		die "list not defined";
-	} elsif( not ref $list ) {
-		$list eq "all" or die;
-		return get_full_proc_list;
-	} elsif( "ARRAY" eq ref $list ) {
-		return $list;
-	} else {
-		die;
-	}
-}
-
 sub check_defined_scalar($) {
 	1 == @_ or die;
 	my $value = shift;
@@ -1186,7 +1172,6 @@ sub evaltree($$) {
 	} elsif( $op eq 'AND' ) {
 		local $after_OR = undef;
 		@tree > 1 or die "$op takes at least two args\n";
-		$list = check_list $list;
 		foreach (@tree) {
 			last unless @$list;
 			$list = evaltree( $list, $_ );
