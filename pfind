@@ -322,6 +322,59 @@ my %sprintf_escapes = (
 	"-"	=> "", # empty string, works as a separator
 );
 
+sub process_conditional($$$) {
+	my ($list, $out, $conditional) = @_;
+	'ARRAY' eq ref $conditional or die;
+	my @options = @$conditional;
+	'CONDITIONAL' eq shift @options or die;
+	@options > 1 or die;
+	my $last = $options[$#options];
+	'DEFAULT' eq $last->[0] or die;
+	my $restlist = ( defined($list) ? [@$list] : [$NOPID] ) ;
+	foreach my $o ( @options ) {
+		last unless @$restlist;
+		die unless 'ARRAY' eq ref $o;
+		my ($curlist, $value);
+		if( 'DEFAULT' eq $o->[0] ) {
+			2 == @$o or die;
+			$value = $o->[1];
+			$curlist = [ @$restlist ];
+			goto curlist_done;
+		}
+		'OPTION' eq $o->[0] or die;
+		3 == @$o or die;
+		( undef, my($cond), $value ) = @$o;
+		my $negative;
+		if( 'NOT' eq $cond->[0] ) {
+			die unless 2 == @$cond;
+			$negative = 1;
+			$cond = $cond->[1];
+		}
+		die unless 4 == @$cond;
+		die unless 'COMPARE' eq $cond->[0];
+		my (undef, $cmp_name, $left, $right ) = @$cond;
+		my $cmp_out = eval_compare( $list, $cmp_name, $left, $right );
+		if( defined $list ) {
+			$curlist = ( $negative ? lists_substract($list, $cmp_out) : $cmp_out );
+		} else {
+			$curlist = ( ($negative xor $cmp_out) ? [$NOPID] : [] );
+		}
+		curlist_done:
+		die unless defined $curlist;
+		die unless defined $value;
+		if( defined $list ) {
+			my $add = process_arg( $value, $curlist );
+			$out->{$_} .= $add->{$_} foreach @$curlist;
+		} elsif( 1 == @$curlist and -1 == $curlist->[0] ) {
+			$out->{$NOPID} .= process_arg $value;
+		} else {
+			die unless 0 == @$curlist;
+		}
+		$restlist = lists_substract( $restlist, $curlist );
+	}
+	die if @$restlist;
+}
+
 sub process_value($$$) {
 	my ($list, $out, $string) = @_;
 	$string =~ /^%(([a-zA-Z]\w*)(\/[a-zA-Z]\w*)*)(.*)$/
@@ -336,6 +389,13 @@ sub process_value($$$) {
 		die "\%$name takes no args\n"
 			if defined $args and length $args;
 		my $value = $vars->{$name};
+		if( ref $value ) {
+			process_conditional(
+				( $var_is_local ? $list : undef ),
+				$out, $value
+			);
+			return $string;
+		}
 		check_defined_scalar $value;
 		if( $value =~ /^\\q(.*)$/ ) {
 			$out->{$_} .= $1 for @outlist;
@@ -749,8 +809,7 @@ sub assign($;$) {
 	my ($name, $value) = @_;
 	# we do not use process_arg(), this is probably not good
 	check_defined_scalar $name;
-	# undefined $value will remove variable
-	die if ref $value;
+	# undefined $value will remove variable, ref is for conditional assignment
 	$name =~ /^%(\w+)$/ or
 		die "left operand of := must be unquoted variable name\n";
 	$name = $1; # drop initial '%'
@@ -784,7 +843,7 @@ sub eval_compare($$$$) {
 	my $code = $compare{$name};
 	$code = $compare{$code} if not ref $code;
 	die $name unless 'CODE' eq ref $code;
-	if( not defined $checklist ) { # global -if condition
+	if( not defined $checklist ) { # -if condition or conditional assignment to global variable
 		$arg1 = process_arg $arg1;
 		$arg2 = process_arg $arg2;
 		check_numeric $arg1, $arg2, $name if $compare_num{$name};
