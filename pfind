@@ -193,8 +193,7 @@ sub get_status($) {
 	return $out;
 }
 
-sub get_UNAME($) {
-	die unless $NOPID eq shift;
+sub get_UNAME() {
 	my @values = uname;
 	5 == @values or die "uname() must retun 5 values\n";
 	my $out = {};
@@ -203,16 +202,14 @@ sub get_UNAME($) {
 	return $out;
 }
 
-sub get_UPTIME($) {
-	die unless $NOPID eq shift;
+sub get_UPTIME() {
 	my $line = read_line_from_file "/proc/uptime";
 	$line =~ /^((\d+)(\.\d+)?)\s+((\d+)(\.\d+)?)\s*$/
 		or die "bad line from /proc/uptime: $line\n";
 	return $2; # the integer part of uptime
 }
 
-sub get_HZ($) {
-	die unless $NOPID eq shift;
+sub get_HZ() {
 	my $release = cached_get( $NOPID, "UNAME", "RELEASE" );
 	my $filename = "/boot/config-$release";
 	my $gzname = "/proc/config.gz";
@@ -242,7 +239,7 @@ my %getters0 = (
 	"root"	=> sub { readlink("/proc/$_[0]/root") // "" },
 	"tree"	=> sub { "" }, # see -settree
 	"UPTIME"	=> \&get_UPTIME,
-	"PAGESIZE"	=> sub { $NOPID eq $_[0] ? sysconf(_SC_PAGESIZE) : die },
+	"PAGESIZE"	=> sub { sysconf(_SC_PAGESIZE) },
 	"HZ"		=> \&get_HZ,
 );
 my %getters1 = (
@@ -250,17 +247,17 @@ my %getters1 = (
 	"statm"	=> \&get_statm,
 	"status" => \&get_status,
 	"UNAME"	=> \&get_UNAME,
-	"ENV"	=> sub { $NOPID eq $_[0] ?  { %ENV } : die },
+	"ENV"	=> sub { return( {%ENV} ) },
 );
 
 sub cached_get($$;@) {
 	my ($pid, $name, @args) = @_;
 	die "bad variable name $name: must be all upper or all lower case\n"
 		if $name =~ /[A-Z]/ and $name =~ /[a-z]/;
-	die "no PID allowed for global vars\n"
-		if $name =~ /^[A-Z]/ and $pid ne $NOPID;
+	my $global = ( $name =~ /^[A-Z]/ );
+	die "no PID allowed for global vars\n" if $global and $pid ne $NOPID;
 	die "bad PID: $pid for $name\n"
-		if $name =~ /^[a-z]/ and not ( $pid =~ /^\d+$/ and $pid > 0 );
+		if not $global and not ( $pid =~ /^\d+$/ and $pid > 0 );
 	if( exists $getters0{$name} ) {
 		0 == @args or die "variable $name has no subvariables\n";
 		$state->{$pid}{$name} //= $getters0{$name}->($pid);
