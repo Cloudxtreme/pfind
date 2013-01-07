@@ -627,7 +627,7 @@ sub print_table($$$@) {
 		my $maxlength = 0;
 		my $allnumeric = 1;
 		foreach ( @values ) {
-			$allnumeric = 0 if $allnumeric and not /^(-?\d+(\.\d+)?\w)|-$/;
+			$allnumeric = 0 if $allnumeric and not /^(-?\d+(\.\d+)?\w?)|-$/;
 			my $l = length;
 			$maxlength = $l if $l > $maxlength;
 		}
