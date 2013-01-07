@@ -305,22 +305,6 @@ sub cmd_list($) {
 	return $list;
 }
 
-my %readlink_cache = ();
-sub func_readlink($$$) {
-	my ($list, $name, $path_arg) = @_;
-	3 == @_ or die "%$name\{\} takes 1 arg\n";
-	my $path_hash = process_arg( $path_arg, $list );
-	$path_hash = { $NOPID => $path_hash } unless $list;
-	my %out;
-	foreach my $pid ( keys %$path_hash ) {
-		my $path = $path_hash->{$pid};
-		die "%$name\{\}: path must be absolute: $path\n"
-			unless $path =~ /^\//;
-		$out{$pid} = ( $readlink_cache{$path} //= ( readlink($path) || "" ) );
-	}
-	return \%out;
-}
-
 sub mk_simple_func(&$) {
 	my ($code, $num_args) = @_;
 	return sub {
@@ -382,6 +366,12 @@ sub func_filegetline($$$@) {
 	return \%out;
 }
 
+my %readlink_cache = ();
+sub sfunc_readlink($) {
+	my $path = shift;
+	die "%readlink\{\}: path must be absolute: $path\n" unless $path =~ /^\//;
+	return ( $readlink_cache{$path} //= ( readlink($path) || "" ) );
+}
 sub sfunc_math($) {
 	my $expr = shift;
 	die "Bad %math\{\} argument value: $expr\n"
@@ -395,11 +385,12 @@ sub sfunc_human($) {
 	$_[0] =~ /^([\-\+]?)(\d+)$/ ? $1 . (format_bytes($_[0]) || "-") : $_[0]
 }
 
+my $func_readlink = mk_simple_func \&sfunc_readlink, 1;
 my $func_math = mk_simple_func \&sfunc_math, 1;
 my $func_human = mk_simple_func \&sfunc_human, 1;
 my %sysfunc = (
-	readlink	=>	\&func_readlink,
-	READLINK	=>	\&func_readlink,
+	readlink	=>	$func_readlink,
+	READLINK	=>	$func_readlink,
 	math		=>	$func_math,
 	MATH		=>	$func_math,
 	human		=>	$func_human,
