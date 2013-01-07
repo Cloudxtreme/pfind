@@ -295,6 +295,27 @@ sub cmd_list($) {
 	return $list;
 }
 
+my %readlink_cache = ();
+sub func_readlink($$$) {
+	my ($list, $name, $path_arg) = @_;
+	3 == @_ or die "%$name\{\} takes 1 arg\n";
+	my $path_hash = process_arg( $path_arg, $list );
+	$path_hash = { $NOPID => $path_hash } unless $list;
+	my %out;
+	foreach my $pid ( keys %$path_hash ) {
+		my $path = $path_hash->{$pid};
+		die "%$name\{\}: path must be absolute: $path\n"
+			unless $path =~ /^\//;
+		$out{$pid} = ( $readlink_cache{$path} //= ( readlink($path) || "" ) );
+	}
+	return \%out;
+}
+
+my %sysfunc = (
+	readlink	=>	\&func_readlink,
+	READLINK	=>	\&func_readlink,
+);
+
 my %sprintf_escapes = (
 	# \q is for -quote, \x is for hex, \0 is for oct
 	a	=> "\a",
@@ -375,7 +396,7 @@ sub process_value($$$) {
 	$string = $4;
 	my @args = ();
 	if( $string =~ /^\{/ ) {
-		$string =~ /^\{([%\w\/,\-\+\*]*)\}(.*)$/
+		$string =~ /^\{([%\w\/,\.\-\+\*]*)\}(.*)$/
 			or die "bad arguments syntax: $string\n";
 		$string = $2;
 		if( length $1 ) {
@@ -386,7 +407,18 @@ sub process_value($$$) {
 	my $is_local = ( $name =~ /^[a-z]/ );
 	die "you cannot use local variables here: $string\n"
 		if $is_local and not defined $list;
-	if( exists $userfunc_values->{$name} ) {
+	if( exists $sysfunc{$name} ) {
+		die "\%$name takes no subvars\n"
+			if defined $subvars_str and length $subvars_str;
+		if( $is_local ) {
+			$list or die;
+			my $add = $sysfunc{$name}->($list, $name, @args);
+			$out->{$_} .= $add->{$_} for @outlist;
+		} else {
+			my $add = $sysfunc{$name}->(undef, $name, @args);
+			$out->{$_} .= $add->{$NOPID} foreach @outlist;
+		}
+	} elsif( exists $userfunc_values->{$name} ) {
 		die "\%$name takes no subvars\n"
 			if defined $subvars_str and length $subvars_str;
 		my $value = $userfunc_values->{$name};
@@ -1323,7 +1355,7 @@ sub mydump($$) {
 sub main() {
 	my $quiet;
 	my %dump_opt = ();
-	my %candump = map { $_ => 1 } qw/tree keywords usercmd userfunc/;
+	my %candump = map { $_ => 1 } qw/tree keywords sysfunc usercmd userfunc/;
 	my $default_cmd = "ps";
 	my $no_preload;
 	my @source_files = </etc/pfind/*.pfind>;
@@ -1361,6 +1393,7 @@ sub main() {
 		}
 	}
 	$dump_opt{keywords} and die sprintf "%s\n", join " ", sort keys %keywords;
+	$dump_opt{sysfunc} and die sprintf "%s\n", join " ", map {"%$_"} sort keys %sysfunc;
 	my @subtrees;
 	push @subtrees, mktree( parse_conf split /\n/, $preload ) unless $no_preload;
 	push @subtrees, mktree( parse_conf read_file $_ ) foreach @source_files;
