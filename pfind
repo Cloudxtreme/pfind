@@ -13,6 +13,7 @@ my $userfunc_args = {};
 my $userfunc_values = {};
 my $usercmd_args = {};
 my $usercmd_blocks = {};
+my %is_human;
 # a copy of previous expression's result
 # for things like -children/-parents/-descendants/-ancestors:
 my $previous_list;
@@ -68,8 +69,10 @@ my $preload = <<'PRELOAD';
 	-cmd -egrep %EGREP_ARG { %exe '=~' %EGREP_ARG
 		-or %comm '=~' %EGREP_ARG -or %name '=~' %EGREP_ARG }
 
+	-human %vsz %rss ';'
+
 	%command := %tree%name
-	-cmd -pstree { -settree -echo %ppid %pid %state RSS:%human{%rss} VSZ:%human{%vsz} %command }
+	-cmd -pstree { -settree -echo %ppid %pid %state %rss %vsz %command }
 PRELOAD
 
 sub get_all_pids() {
@@ -334,6 +337,7 @@ sub func_math($$$) {
 	return \%out;
 }
 
+sub mk_human($) { format_bytes(shift) || "-" }
 sub func_human($$$) {
 	my ($list, $name, $arg_in) = @_;
 	3 == @_ or die "%$name\{\} takes 1 arg\n";
@@ -343,9 +347,7 @@ sub func_human($$$) {
 	foreach my $pid ( keys %$arg_hash ) {
 		my $expr = $arg_hash->{$pid};
 		if( $expr =~ /^([\-\+]?)(\d+)$/ ) {
-			my $v = $1 . format_bytes $2;
-			$v = "-" if 0 eq $v;
-			$out{$pid} = $v;
+			$out{$pid} = mk_human $2;
 		} else {
 			$out{$pid} = $expr;
 		}
@@ -561,16 +563,18 @@ sub print_table($$$@) {
 	my $columns = [];
 	my $first_alignment;
 	foreach my $str ( @strings ) {
-		my $header;
-		my $alignment = "/auto";
+		my ($header, $alignment, $human);
 		if( $str =~ /((\w*)(\/\w+)?):(.+)$/ and length $1 ) {
 			$str = $4;
 			$header = $2 if length $2;
-			$alignment = $3 ? $3 : "/auto";
+			$alignment = $3 if $3;
 		}
-		if( $with_header and not defined $header ) {
-			$header = ($str =~ /^%(\w[\w\/]*)$/) ? uc $1 : "";
+		if( $str =~ /^%(\w[\w\/]*)$/ ) {
+			$header = uc $1 if not defined $header;
+			$human = 1 if $is_human{$1};
 		}
+		$alignment = "/auto" if not defined $alignment;
+		$header = "" if not defined $header;
 		my @values;
 		if( $once ) {
 			my $s = process_arg $str;
@@ -579,6 +583,7 @@ sub print_table($$$@) {
 			my $hashed_s = process_arg($str, $list);
 			@values = map { $hashed_s->{$_} } @$list;
 		}
+		@values = map { mk_human $_ } @values if $human;
 		if( $alignment eq "/center" ) {
 			s/^\s*(.*[^\s])\s*$/$1/ foreach @values;
 		}
@@ -752,6 +757,17 @@ sub cmd_exec($$@) {
 	}
 }
 
+sub cmd_human($@) {
+	my ($list, @vars) = @_;
+	@vars or die "-human takes at least one arg\n";
+	# we do not use process_arg()
+	foreach my $var ( @vars ) {
+		$var =~ /^(-?)%([a-zA-Z]\w*)$/ or die "Bad -human arg: $var\n";
+		$1 ? ( delete $is_human{$2} ) : ( $is_human{$2} = 1 );
+	}
+	return $list;
+}
+
 sub cmd_pidfile($$) {
 	my ($checklist, $pidfile) = @_;
 	$pidfile = process_arg $pidfile;
@@ -876,6 +892,7 @@ my %cmdm = (
 	"print1"	=> sub { my $list = shift; print_table( undef, "print1", 0, @_); $list },
 	"echo"		=> sub { my $list = shift; print_table( $list, "echo",   1, @_); $list },
 	"echo1"		=> sub { my $list = shift; print_table( undef, "echo1",  1, @_); $list },
+	"human"		=> \&cmd_human,
 );
 my %compare = ( # do not firget to edit %compare_match and %compare_num!
 	"-m"	=> sub { $_[0] =~ pattern2re $_[1] },
