@@ -315,9 +315,29 @@ sub func_readlink($$$) {
 	return \%out;
 }
 
+sub func_math($$$) {
+	my ($list, $name, $arg_in) = @_;
+	3 == @_ or die "%$name\{\} takes 1 arg\n";
+	my $arg_hash = process_arg( $arg_in, $list );
+	$arg_hash = { $NOPID => $arg_hash } unless $list;
+	my %out;
+	foreach my $pid ( keys %$arg_hash ) {
+		my $expr = $arg_hash->{$pid};
+		die "Bad %$name\{\} argument value: $expr\n"
+			unless $expr =~ /^[\d\-\+\*\/\(\)]+$/;
+		my $value = eval $expr;
+		die "%$name\{\} syntax error: $expr\n"
+			unless defined($value) and not ref($value);
+		$out{$pid} = $value;
+	}
+	return \%out;
+}
+
 my %sysfunc = (
 	readlink	=>	\&func_readlink,
 	READLINK	=>	\&func_readlink,
+	math		=>	\&func_math,
+	MATH		=>	\&func_math,
 );
 
 my %sprintf_escapes = (
