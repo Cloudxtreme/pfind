@@ -9,6 +9,7 @@ use POSIX qw/uname sysconf _SC_PAGESIZE/;
 my @allpids = ();
 my $globalcache = {};
 my $localcache = {};
+my %cache = ();
 my $userfunc_args = {};
 my $userfunc_values = {};
 my $usercmd_args = {};
@@ -47,6 +48,7 @@ my $preload = <<'PRELOAD';
 
 	-cmd -exe %exe_arg { %exe == %exe_arg }
 	-cmd -cwd %cwd_arg { %cwd == %cwd_arg }
+	-cmd -pidfile %PIDFILENAME { %pid == %FILEGETLINE{%PIDFILENAME,lineno=0} }
 
 	%vsz := %statm/size
 	%rss := %statm/resident
@@ -355,6 +357,49 @@ sub func_human($$$) {
 	return \%out;
 }
 
+sub get_file_lines($) {
+	die unless 1 == @_;
+	my $filename = shift;
+	my $cache_key = "file_lines:$filename";
+	return @{$cache{$cache_key}} if exists $cache{$cache_key};
+	$filename =~ /^\// or die "bad filename: $filename\n";
+	open FILE, "<", $filename or die "cannot open $filename: $!";
+	my @out = <FILE>;
+	close FILE or die $!;
+	chomp foreach @out;
+	$cache{$cache_key} = [@out];
+	return @out;
+}
+sub func_filegetline($$$@) {
+	my ($list, $name, $filename_arg, @named_args_arr) = @_;
+	@_ >= 4 or die "%$name\{\} takes at least two args\n" . Dumper \@_;
+	my %args_in = ( filename => $filename_arg );
+	foreach ( @named_args_arr ) {
+		/^(\w+)=(.*)$/ or die "bad arg format for $name: $_\n";
+		$args_in{$1} = $2;
+	}
+	my @outlist = ( $list ? @$list : $NOPID );
+	my $hashed_args;
+	if( $list ) {
+		$hashed_args->{$_} = process_arg( $args_in{$_}, $list )
+			foreach keys %args_in;
+	} else {
+		$hashed_args->{$_} = { $NOPID => process_arg($args_in{$_}) }
+			foreach keys %args_in;
+	}
+	my %out = ();
+	foreach my $pid ( @outlist ) {
+		my @lines = get_file_lines $hashed_args->{filename}{$pid};
+		if( exists $hashed_args->{lineno} ) {
+			my $num = $hashed_args->{lineno}{$pid};
+			$out{$pid} = ( exists($lines[$num]) ? $lines[$num] : "" );
+		} else {
+			die "%filegetline\{\}: not enough info how to get line from file\n";
+		}
+	}
+	return \%out;
+}
+
 my %sysfunc = (
 	readlink	=>	\&func_readlink,
 	READLINK	=>	\&func_readlink,
@@ -362,6 +407,8 @@ my %sysfunc = (
 	MATH		=>	\&func_math,
 	human		=>	\&func_human,
 	HUMAN		=>	\&func_human,
+	filegetline	=>	\&func_filegetline,
+	FILEGETLINE	=>	\&func_filegetline,
 );
 
 my %sprintf_escapes = (
@@ -444,7 +491,7 @@ sub process_value($$$) {
 	$string = $4;
 	my @args = ();
 	if( $string =~ /^\{/ ) {
-		$string =~ /^\{([%\w\/,\.\-\+\*]*)\}(.*)$/
+		$string =~ /^\{([%\w\/,\.\-\+\*=]*)\}(.*)$/
 			or die "bad arguments syntax: $string\n";
 		$string = $2;
 		if( length $1 ) {
@@ -768,17 +815,6 @@ sub cmd_human($@) {
 	return $list;
 }
 
-sub cmd_pidfile($$) {
-	my ($checklist, $pidfile) = @_;
-	$pidfile = process_arg $pidfile;
-	my $pid = read_line_from_file $pidfile;
-	return [] unless defined $pid;
-	$pid =~ /^\d+$/ or return [];
-	my %ok = map { $_ => 1 } @$checklist;
-	$ok{$pid} or return [];
-	return [ $pid ];
-}
-
 sub cmd_sort($$) {
 	my ($checklist, $value) = @_;
 	$value =~ /%[a-z]/ or die "-sort expects unquoted local variable argument\n";
@@ -876,7 +912,6 @@ my %cmd1 = (
 	"warnf"		=> \&cmd_warnf,
 	"exit"		=> \&cmd_exit,
 	"signal"	=> \&cmd_signal,
-	"pidfile"	=> \&cmd_pidfile,
 	"sort"		=> \&cmd_sort,
 	"head"		=> \&cmd_head,
 	"tail"		=> \&cmd_tail,
