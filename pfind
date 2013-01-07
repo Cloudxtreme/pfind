@@ -69,7 +69,7 @@ my $preload = <<'PRELOAD';
 		-or %comm '=~' %EGREP_ARG -or %name '=~' %EGREP_ARG }
 
 	%command := %tree%name
-	-cmd -pstree { -settree -echo %ppid %pid %state RSS/right:%human{%rss} VSZ/right:%human{%vsz} %command }
+	-cmd -pstree { -settree -echo %ppid %pid %state RSS:%human{%rss} VSZ:%human{%vsz} %command }
 PRELOAD
 
 sub get_all_pids() {
@@ -585,7 +585,7 @@ sub print_table($$$@) {
 		my $maxlength = 0;
 		my $allnumeric = 1;
 		foreach ( @values ) {
-			$allnumeric = 0 if $allnumeric and not /^-?\d+$/;
+			$allnumeric = 0 if $allnumeric and not /^(-?\d+(\.\d+)?\w)|-$/;
 			my $l = length;
 			$maxlength = $l if $l > $maxlength;
 		}
