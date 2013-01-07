@@ -321,24 +321,6 @@ sub func_readlink($$$) {
 	return \%out;
 }
 
-sub func_math($$$) {
-	my ($list, $name, $arg_in) = @_;
-	3 == @_ or die "%$name\{\} takes 1 arg\n";
-	my $arg_hash = process_arg( $arg_in, $list );
-	$arg_hash = { $NOPID => $arg_hash } unless $list;
-	my %out;
-	foreach my $pid ( keys %$arg_hash ) {
-		my $expr = $arg_hash->{$pid};
-		die "Bad %$name\{\} argument value: $expr\n"
-			unless $expr =~ /^[\d\-\+\*\/\(\)]+$/;
-		my $value = eval $expr;
-		die "%$name\{\} syntax error: $expr\n"
-			unless defined($value) and not ref($value);
-		$out{$pid} = $value;
-	}
-	return \%out;
-}
-
 sub mk_simple_func(&$) {
 	my ($code, $num_args) = @_;
 	return sub {
@@ -400,16 +382,26 @@ sub func_filegetline($$$@) {
 	return \%out;
 }
 
+sub sfunc_math($) {
+	my $expr = shift;
+	die "Bad %math\{\} argument value: $expr\n"
+		unless $expr =~ /^[\d\-\+\*\/\(\)]+$/;
+	my $value = eval $expr;
+	die "%math\{\} syntax error: $expr\n"
+		unless defined($value) and not ref($value);
+	return $value;
+}
 sub sfunc_human($) {
 	$_[0] =~ /^([\-\+]?)(\d+)$/ ? $1 . (format_bytes($_[0]) || "-") : $_[0]
 }
 
+my $func_math = mk_simple_func \&sfunc_math, 1;
 my $func_human = mk_simple_func \&sfunc_human, 1;
 my %sysfunc = (
 	readlink	=>	\&func_readlink,
 	READLINK	=>	\&func_readlink,
-	math		=>	\&func_math,
-	MATH		=>	\&func_math,
+	math		=>	$func_math,
+	MATH		=>	$func_math,
 	human		=>	$func_human,
 	HUMAN		=>	$func_human,
 	filegetline	=>	\&func_filegetline,
