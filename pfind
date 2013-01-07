@@ -2,6 +2,7 @@
 # (c) 2012 Sergey Redin sergey@redin.info https://github.com/spiculator/pfind
 use strict;
 use Data::Dumper;
+use Number::Bytes::Human qw(format_bytes);
 use Parse::Yapp;
 use POSIX qw/uname sysconf _SC_PAGESIZE/;
 
@@ -68,7 +69,7 @@ my $preload = <<'PRELOAD';
 		-or %comm '=~' %EGREP_ARG -or %name '=~' %EGREP_ARG }
 
 	%command := %tree%name
-	-cmd -pstree { -settree -echo %ppid %pid %state %command }
+	-cmd -pstree { -settree -echo %ppid %pid %state RSS/right:%human{%rss} VSZ/right:%human{%vsz} %command }
 PRELOAD
 
 sub get_all_pids() {
@@ -333,11 +334,32 @@ sub func_math($$$) {
 	return \%out;
 }
 
+sub func_human($$$) {
+	my ($list, $name, $arg_in) = @_;
+	3 == @_ or die "%$name\{\} takes 1 arg\n";
+	my $arg_hash = process_arg( $arg_in, $list );
+	$arg_hash = { $NOPID => $arg_hash } unless $list;
+	my %out;
+	foreach my $pid ( keys %$arg_hash ) {
+		my $expr = $arg_hash->{$pid};
+		if( $expr =~ /^([\-\+]?)(\d+)$/ ) {
+			my $v = $1 . format_bytes $2;
+			$v = "-" if 0 eq $v;
+			$out{$pid} = $v;
+		} else {
+			$out{$pid} = $expr;
+		}
+	}
+	return \%out;
+}
+
 my %sysfunc = (
 	readlink	=>	\&func_readlink,
 	READLINK	=>	\&func_readlink,
 	math		=>	\&func_math,
 	MATH		=>	\&func_math,
+	human		=>	\&func_human,
+	HUMAN		=>	\&func_human,
 );
 
 my %sprintf_escapes = (

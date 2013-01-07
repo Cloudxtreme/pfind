@@ -59,5 +59,5 @@ Interactive kill, `;` is to run `kill` for each PID one by one:
 
 * `linux` with `procfs` mounted
 * `perl`
-* `Parse::Yapp`
+* `Number::Bytes::Human` and `Parse::Yapp` modules
 
