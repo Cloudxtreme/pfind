@@ -339,22 +339,22 @@ sub func_math($$$) {
 	return \%out;
 }
 
-sub mk_human($) { format_bytes(shift) || "-" }
-sub func_human($$$) {
-	my ($list, $name, $arg_in) = @_;
-	3 == @_ or die "%$name\{\} takes 1 arg\n";
-	my $arg_hash = process_arg( $arg_in, $list );
-	$arg_hash = { $NOPID => $arg_hash } unless $list;
-	my %out;
-	foreach my $pid ( keys %$arg_hash ) {
-		my $expr = $arg_hash->{$pid};
-		if( $expr =~ /^([\-\+]?)(\d+)$/ ) {
-			$out{$pid} = mk_human $2;
-		} else {
-			$out{$pid} = $expr;
+sub mk_simple_func(&$) {
+	my ($code, $num_args) = @_;
+	return sub {
+		my ($list, $name, @args_in) = @_;
+		$num_args == @args_in or die "%$name\{\} takes $num_args arg(s)\n";
+		my @args_hashes = map {
+			$list ? process_arg($_, $list) : { $NOPID => process_arg($_) }
+		} @args_in;
+		my @outlist = ( $list ? @$list : $NOPID );
+		my %out;
+		foreach my $pid ( @outlist ) {
+			my @args = map { $_->{$pid} } @args_hashes;
+			$out{$pid} = $code->(@args);
 		}
-	}
-	return \%out;
+		return \%out;
+	};
 }
 
 sub get_file_lines($) {
@@ -400,13 +400,18 @@ sub func_filegetline($$$@) {
 	return \%out;
 }
 
+sub sfunc_human($) {
+	$_[0] =~ /^([\-\+]?)(\d+)$/ ? $1 . (format_bytes($_[0]) || "-") : $_[0]
+}
+
+my $func_human = mk_simple_func \&sfunc_human, 1;
 my %sysfunc = (
 	readlink	=>	\&func_readlink,
 	READLINK	=>	\&func_readlink,
 	math		=>	\&func_math,
 	MATH		=>	\&func_math,
-	human		=>	\&func_human,
-	HUMAN		=>	\&func_human,
+	human		=>	$func_human,
+	HUMAN		=>	$func_human,
 	filegetline	=>	\&func_filegetline,
 	FILEGETLINE	=>	\&func_filegetline,
 );
@@ -630,7 +635,7 @@ sub print_table($$$@) {
 			my $hashed_s = process_arg($str, $list);
 			@values = map { $hashed_s->{$_} } @$list;
 		}
-		@values = map { mk_human $_ } @values if $human;
+		@values = map { sfunc_human $_ } @values if $human;
 		if( $alignment eq "/center" ) {
 			s/^\s*(.*[^\s])\s*$/$1/ foreach @values;
 		}
