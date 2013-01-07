@@ -36,6 +36,13 @@ my $preload = <<'PRELOAD';
 	-cmd -ps { -exec ps uf {} }
 	-cmd -pso %PS_FIELDS { -exec ps -quote -o %PS_FIELDS {} }
 
+	%exe_link := /proc/%pid\-/exe
+	%exe := %readlink{%exe_link}
+	%cwd_link := /proc/%pid\-/cwd
+	%cwd := %readlink{%cwd_link}
+	%root_link := /proc/%pid\-/root
+	%root := %readlink{%root_link}
+
 	-cmd -exe %exe_arg { %exe == %exe_arg }
 	-cmd -cwd %cwd_arg { %cwd == %cwd_arg }
 
@@ -235,9 +242,6 @@ sub get_HZ() {
 
 my %getters0 = (
 	"pid"	=> sub { return shift },
-	"exe"	=> sub { readlink("/proc/$_[0]/exe") // "" },
-	"cwd"	=> sub { readlink("/proc/$_[0]/cwd") // "" },
-	"root"	=> sub { readlink("/proc/$_[0]/root") // "" },
 	"tree"	=> sub { "" }, # see -settree
 	"UPTIME"	=> \&get_UPTIME,
 	"PAGESIZE"	=> sub { sysconf(_SC_PAGESIZE) },
@@ -1319,9 +1323,9 @@ sub parse_conf(@) {
 				$line = $1;
 			} elsif( $line =~ /^#/ ) {
 				next conf_line;
-			} elsif( $line =~ /^([\w%\/\-\(\){}\[\]\?:=\!,]+)(.*)$/ ) {
+			} elsif( $line =~ /^(([\w%\/\-\(\){}\[\]\?:=\!,]|\\[\w\-\\])+)(.*)$/ ) {
 				push @out, $1;
-				$line = $2;
+				$line = $3;
 				if( length($line) and not $line =~ /^\s/ ) {
 					die "unexpected character after token here: $line\n";
 				}
