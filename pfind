@@ -258,7 +258,6 @@ my %getters1 = (
 	"statm"	=> \&get_statm,
 	"status" => \&get_status,
 	"UNAME"	=> \&get_UNAME,
-	"ENV"	=> sub { return( {%ENV} ) },
 );
 my %getters = ( %getters0, %getters1 );
 
@@ -385,10 +384,13 @@ sub sfunc_human($) {
 	$_[0] =~ /^([\-\+]?)(\d+)$/ ? $1 . (format_bytes($_[0]) || "-") : $_[0]
 }
 
+my $func_env = mk_simple_func { $ENV{shift()} || "" } 1;
 my $func_readlink = mk_simple_func \&sfunc_readlink, 1;
 my $func_math = mk_simple_func \&sfunc_math, 1;
 my $func_human = mk_simple_func \&sfunc_human, 1;
 my %sysfunc = (
+	env		=>	$func_env,
+	ENV		=>	$func_env,
 	readlink	=>	$func_readlink,
 	READLINK	=>	$func_readlink,
 	math		=>	$func_math,
