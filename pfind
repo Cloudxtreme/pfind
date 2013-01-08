@@ -47,7 +47,7 @@ my $preload = <<'PRELOAD';
 
 	-cmd -exe %exe_arg { %exe == %exe_arg }
 	-cmd -cwd %cwd_arg { %cwd == %cwd_arg }
-	-cmd -pidfile %PIDFILENAME { %pid == %FILEGETLINE{%PIDFILENAME,lineno=0} }
+	-cmd -pidfile %PIDFILENAME { %pid == %FILEGET{%PIDFILENAME,lineno=0} }
 
 	%vsz := %statm/size
 	%rss := %statm/resident
@@ -333,7 +333,7 @@ sub get_file_lines($) {
 	$cache{$cache_key} = [@out];
 	return @out;
 }
-sub func_filegetline($$$@) {
+sub func_fileget($$$@) {
 	my ($list, $name, $filename_arg, @named_args_arr) = @_;
 	@_ >= 4 or die "%$name\{\} takes at least two args\n" . Dumper \@_;
 	my %args_in = ( filename => $filename_arg );
@@ -384,7 +384,7 @@ sub func_filegetline($$$@) {
 				last;
 			}
 		} else {
-			die "%filegetline\{\}: not enough info how to get line from file\n";
+			die "%fileget\{\}: not enough info how to get line from file\n";
 		}
 	}
 	return \%out;
@@ -423,8 +423,8 @@ my %sysfunc = (
 	MATH		=>	$func_math,
 	human		=>	$func_human,
 	HUMAN		=>	$func_human,
-	filegetline	=>	\&func_filegetline,
-	FILEGETLINE	=>	\&func_filegetline,
+	fileget		=>	\&func_fileget,
+	FILEGET		=>	\&func_fileget,
 );
 
 my %sprintf_escapes = (
