@@ -246,7 +246,7 @@ sub get_HZ() {
 }
 
 my %getters0 = (
-	"tree"	=> sub { "" }, # see -settree
+	"tree"		=> sub { "" }, # see -settree
 	"UPTIME"	=> \&get_UPTIME,
 	"PAGESIZE"	=> sub { sysconf(_SC_PAGESIZE) },
 	"HZ"		=> \&get_HZ,
