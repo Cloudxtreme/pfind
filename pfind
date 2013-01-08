@@ -24,6 +24,8 @@ my $action_triggered = undef;
 my $NOPID = -1;
 
 my $preload = <<'PRELOAD';
+	%pid := %_
+
 	-cmd -writeln %str { -write '%str\n' }
 	-cmd -writeln1 %STR { -write1 '%STR\n' }
 
@@ -39,12 +41,9 @@ my $preload = <<'PRELOAD';
 	-cmd -ps { -exec ps uf {} }
 	-cmd -pso %PS_FIELDS { -exec ps -quote -o %PS_FIELDS {} }
 
-	%exe_link := /proc/%pid\-/exe
-	%exe := %readlink{%exe_link}
-	%cwd_link := /proc/%pid\-/cwd
-	%cwd := %readlink{%cwd_link}
-	%root_link := /proc/%pid\-/root
-	%root := %readlink{%root_link}
+	%exe := %readlink{/proc/%_/exe}
+	%cwd := %readlink{/proc/%_/cwd}
+	%root := %readlink{/proc/%_/root}
 
 	-cmd -exe %exe_arg { %exe == %exe_arg }
 	-cmd -cwd %cwd_arg { %cwd == %cwd_arg }
@@ -247,7 +246,6 @@ sub get_HZ() {
 }
 
 my %getters0 = (
-	"pid"	=> sub { return shift },
 	"tree"	=> sub { "" }, # see -settree
 	"UPTIME"	=> \&get_UPTIME,
 	"PAGESIZE"	=> sub { sysconf(_SC_PAGESIZE) },
@@ -581,6 +579,10 @@ sub process_arg($;$) {
 			my $add = $sprintf_escapes{$1} // "\\$1";
 			$out->{$_} .= $add for @outlist;
 			$rest = $2;
+		} elsif( $rest =~ /^%_(.*)$/ ) {
+			$list or die "cannot use %_ here\n";
+			$out->{$_} .= $_ for @outlist;
+			$rest = $1;
 		} elsif( $rest =~ /^%/ ) {
 			$rest = process_value( $list, $out, $rest );
 		} else {
