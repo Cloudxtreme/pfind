@@ -63,7 +63,8 @@ my $preload = <<'PRELOAD';
 	%s := %stat/state
 	%state := %s%nice_flag
 
-	%name := %status/Name
+	%status{%status_arg} := %fileget{/proc/%_/status,pairkey=%status_arg}
+	%name := %status{Name}
 
 	-cmd -grep %GREP_ARG { %exe -m '*%GREP_ARG*'
 		-or %comm -m '*%GREP_ARG*' -or %name -m '*%GREP_ARG*' }
@@ -195,17 +196,6 @@ sub fix_kb($) {
 	}
 }
 
-sub get_status($) {
-	my $pid = shift;
-	my $out = {};
-	foreach ( read_file "/proc/$pid/status" ) {
-		chomp;
-		/^(\w+):\s+(.*)$/ or die "Bad line from status for $pid: $_\n";
-		$out->{$1} = fix_kb $2;
-	}
-	return $out;
-}
-
 sub get_UNAME() {
 	my @values = uname;
 	5 == @values or die "uname() must retun 5 values\n";
@@ -254,7 +244,6 @@ my %getters0 = (
 my %getters1 = (
 	"stat"	=> \&get_stat,
 	"statm"	=> \&get_statm,
-	"status" => \&get_status,
 	"UNAME"	=> \&get_UNAME,
 );
 my %getters = ( %getters0, %getters1 );
