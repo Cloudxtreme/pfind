@@ -399,9 +399,10 @@ my $func_math = mk_simple_func {
 	return $value;
 } 1;
 
-my $func_human = mk_simple_func {
+sub mk_human {
 	$_[0] =~ /^([\-\+]?)(\d+)$/ ? $1 . (format_bytes($_[0]) || "-") : $_[0]
-} 1;
+}
+my $func_human = mk_simple_func \&mk_human, 1;
 
 my $func_env = mk_simple_func { $ENV{shift()} || "" } 1;
 
@@ -641,7 +642,7 @@ sub print_table($$$@) {
 			my $hashed_s = process_arg($str, $list);
 			@values = map { $hashed_s->{$_} } @$list;
 		}
-		@values = map { sfunc_human $_ } @values if $human;
+		@values = map { mk_human $_ } @values if $human;
 		if( $alignment eq "/center" ) {
 			s/^\s*(.*[^\s])\s*$/$1/ foreach @values;
 		}
