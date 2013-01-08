@@ -413,10 +413,13 @@ sub mk_human {
 my $func_human = mk_simple_func \&mk_human, 1;
 
 my $func_env = mk_simple_func { $ENV{shift()} || "" } 1;
+my $func_fix_kb = mk_simple_func \&fix_kb, 1;
 
 my %sysfunc = (
 	env		=>	$func_env,
 	ENV		=>	$func_env,
+	fix_kb		=>	$func_fix_kb,
+	FIX_KB		=>	$func_fix_kb,
 	readlink	=>	$func_readlink,
 	READLINK	=>	$func_readlink,
 	math		=>	$func_math,
