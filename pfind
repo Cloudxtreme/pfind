@@ -356,6 +356,25 @@ sub func_filegetline($$$@) {
 		if( exists $hashed_args->{lineno} ) {
 			my $num = $hashed_args->{lineno}{$pid};
 			$out{$pid} = ( exists($lines[$num]) ? $lines[$num] : "" );
+		} elsif( exists $hashed_args->{keynum} ) {
+			my $keynum = $hashed_args->{keynum}{$pid};
+			my $keyval = $hashed_args->{keyval}{$pid};
+			die "%$name\{\}: no keyval parameter\n" unless defined $keyval;
+			my $sep = $hashed_args->{sep}{$pid};
+			$sep = ":" unless defined $sep;
+			foreach my $l ( @lines ) {
+				next if $l =~ /^\s*(#.*)?$/;
+				my @fields = split $sep, $l;
+				next unless $fields[$keynum] eq $keyval;
+				if( exists $hashed_args->{fieldno} ) {
+					my $fieldno = $hashed_args->{fieldno}{$pid};
+					die "bad fieldno: $fieldno\n" unless $fieldno =~ /^\d+$/;
+					$out{$pid} .= $fields[$fieldno] if exists $fields[$fieldno];
+				} else {
+					$out{$pid} .= $l;
+				}
+				last;
+			}
 		} else {
 			die "%filegetline\{\}: not enough info how to get line from file\n";
 		}
