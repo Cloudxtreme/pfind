@@ -350,7 +350,7 @@ sub func_filegetline($$$@) {
 		$hashed_args->{$_} = { $NOPID => process_arg($args_in{$_}) }
 			foreach keys %args_in;
 	}
-	my %out = ();
+	my %out = map { $_ => "" } @outlist;
 	foreach my $pid ( @outlist ) {
 		my @lines = get_file_lines $hashed_args->{filename}{$pid};
 		if( exists $hashed_args->{lineno} ) {
