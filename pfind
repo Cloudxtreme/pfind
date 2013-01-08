@@ -364,12 +364,13 @@ sub func_filegetline($$$@) {
 }
 
 my %readlink_cache = ();
-sub sfunc_readlink($) {
+my $func_readlink = mk_simple_func {
 	my $path = shift;
 	die "%readlink\{\}: path must be absolute: $path\n" unless $path =~ /^\//;
 	return ( $readlink_cache{$path} //= ( readlink($path) || "" ) );
-}
-sub sfunc_math($) {
+} 1;
+
+my $func_math = mk_simple_func {
 	my $expr = shift;
 	die "Bad %math\{\} argument value: $expr\n"
 		unless $expr =~ /^[\d\-\+\*\/\(\)]+$/;
@@ -377,15 +378,14 @@ sub sfunc_math($) {
 	die "%math\{\} syntax error: $expr\n"
 		unless defined($value) and not ref($value);
 	return $value;
-}
-sub sfunc_human($) {
+} 1;
+
+my $func_human = mk_simple_func {
 	$_[0] =~ /^([\-\+]?)(\d+)$/ ? $1 . (format_bytes($_[0]) || "-") : $_[0]
-}
+} 1;
 
 my $func_env = mk_simple_func { $ENV{shift()} || "" } 1;
-my $func_readlink = mk_simple_func \&sfunc_readlink, 1;
-my $func_math = mk_simple_func \&sfunc_math, 1;
-my $func_human = mk_simple_func \&sfunc_human, 1;
+
 my %sysfunc = (
 	env		=>	$func_env,
 	ENV		=>	$func_env,
