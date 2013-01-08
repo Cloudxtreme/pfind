@@ -356,6 +356,14 @@ sub func_filegetline($$$@) {
 		if( exists $hashed_args->{lineno} ) {
 			my $num = $hashed_args->{lineno}{$pid};
 			$out{$pid} = ( exists($lines[$num]) ? $lines[$num] : "" );
+		} elsif( exists $hashed_args->{pairkey} ) {
+			my $pairkey = $hashed_args->{pairkey}{$pid};
+			my $sep = $hashed_args->{sep}{$pid};
+			$sep = ':\s*' unless defined $sep;
+			foreach ( @lines ) {
+				/^$pairkey$sep(.*)$/ or next;
+				$out{$pid} .= $1;
+			}
 		} elsif( exists $hashed_args->{keynum} ) {
 			my $keynum = $hashed_args->{keynum}{$pid};
 			my $keyval = $hashed_args->{keyval}{$pid};
