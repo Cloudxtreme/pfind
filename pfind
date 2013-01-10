@@ -73,6 +73,8 @@ my $preload = <<'PRELOAD';
 	%euid := '%fieldget{%uids_str,2,%SPACES_RE}'
 	%euser := '%fileget{/etc/passwd,keynum=2,keyval=%euid,fieldno=0}'
 
+	-cmd -user %user_arg { %user == %user_arg }
+
 	-cmd -grep %GREP_ARG { %exe -m '*%GREP_ARG*'
 		-or %comm -m '*%GREP_ARG*' -or %name -m '*%GREP_ARG*' }
 	-cmd -egrep %EGREP_ARG { %exe '=~' %EGREP_ARG

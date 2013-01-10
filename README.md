@@ -41,15 +41,15 @@ Pretty print list of processes with big `utime`, sorted by `utime`:
 
 	pfind %utime := %stat::utime %utime -gt 100 -sort -%utime -echo1 'UTIME \tPID \tCOMM' -echo '%utime \t%pid \t%comm'
 
-## NOT YET IMPLEMENTED EXAMPLES
-
 Show all processes of user `mike`:
 
 	pfind -user mike -ps
 
-Same as previous (`+` is to run the command with all PIDs, not one by one):
+Same as previous:
 
-	pfind %user == mike -exec ps uf {} +
+	pfind %user == mike -exec ps uf {}
+
+## NOT YET IMPLEMENTED EXAMPLES
 
 Interactive kill, `;` is to run `kill` for each PID one by one:
 
