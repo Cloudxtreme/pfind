@@ -498,12 +498,37 @@ sub process_value($$$) {
 	my ($exp, $name, $subvars_str) = ($1, $2, $3);
 	$string = $4;
 	my @args = ();
-	if( $string =~ /^\{/ ) {
-		$string =~ /^\{([%\w\/,\.\-\+\*=]*)\}(.*)$/
-			or die "bad arguments syntax: $string\n";
-		$string = $2;
-		if( length $1 ) {
-			@args = split /,/, $1;
+	if( $string =~ s/^\{\}// ) {
+		# do nothing, empty arguments string
+	} elsif( $string =~ s/^\{// ) {
+		my $cur = "";
+		my $level = 0;
+		for(;;) {
+			if( not length $string ) {
+				die "unexpected end of arguments string\n";
+			} elsif( $string =~ s/^([%\w\/\.\-\+\*=]+)// ) {
+				$cur .= $1;
+			} elsif( $string =~ s/^(\{)// ) {
+				$cur .= $1;
+				++$level;
+			} elsif( $string =~ s/^(,)// ) {
+				if( $level ) {
+					$cur .= $1;
+				} else {
+					push @args, $cur;
+					$cur = "";
+				}
+			} elsif( $string =~ s/^(\})// ) {
+				if( $level ) {
+					$cur .= $1;
+					--$level;
+				} else {
+					push @args, $cur;
+					last;
+				}
+			} else {
+				die "bad characters in arguments string: $string\n";
+			}
 		}
 	}
 	my @outlist = ( defined($list) ? @$list : ($NOPID) );
