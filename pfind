@@ -63,7 +63,7 @@ my $preload = <<'PRELOAD';
 	%s := %stat/state
 	%state := %s%nice_flag
 
-	%status{%status_arg} := %fileget{/proc/%_/status,pairkey=%status_arg}
+	%status{%status_arg} := %fix_kb{%fileget{/proc/%_/status,pairkey=%status_arg}}
 	%name := %status{Name}
 
 	-cmd -grep %GREP_ARG { %exe -m '*%GREP_ARG*'
