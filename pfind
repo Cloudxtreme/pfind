@@ -396,6 +396,13 @@ my $func_math = mk_simple_func {
 	return $value;
 } 1;
 
+my $func_fieldget = mk_simple_func {
+	my ($line, $num, $sep) = @_;
+	die "%fieldget: bad num: $num\n" unless $num =~ /^\d+$/;
+	my @fields = split $sep, $line;
+	return( exists $fields[$num] ? $fields[$num] : "" );
+} 3;
+
 sub mk_human {
 	$_[0] =~ /^([\-\+]?)(\d+)$/ ? $1 . (format_bytes($_[0]) || "-") : $_[0]
 }
@@ -417,6 +424,8 @@ my %sysfunc = (
 	HUMAN		=>	$func_human,
 	fileget		=>	\&func_fileget,
 	FILEGET		=>	\&func_fileget,
+	fieldget	=>	$func_fieldget,
+	FIELDGET	=>	$func_fieldget,
 );
 
 my %sprintf_escapes = (
