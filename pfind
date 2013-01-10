@@ -66,6 +66,13 @@ my $preload = <<'PRELOAD';
 	%status{%status_arg} := %fix_kb{%fileget{/proc/%_/status,pairkey=%status_arg}}
 	%name := %status{Name}
 
+	%uids_str := '%fileget{/proc/%_/status,pairkey=Uid}'
+	%SPACES_RE := -q '\s+'
+	%uid := '%fieldget{%uids_str,1,%SPACES_RE}'
+	%user := '%fileget{/etc/passwd,keynum=2,keyval=%uid,fieldno=0}'
+	%euid := '%fieldget{%uids_str,2,%SPACES_RE}'
+	%euser := '%fileget{/etc/passwd,keynum=2,keyval=%euid,fieldno=0}'
+
 	-cmd -grep %GREP_ARG { %exe -m '*%GREP_ARG*'
 		-or %comm -m '*%GREP_ARG*' -or %name -m '*%GREP_ARG*' }
 	-cmd -egrep %EGREP_ARG { %exe '=~' %EGREP_ARG
@@ -74,7 +81,7 @@ my $preload = <<'PRELOAD';
 	-human %vsz %rss ';'
 
 	%command := %tree%name
-	-cmd -pstree { -settree -echo %ppid %pid %state %rss %vsz %command }
+	-cmd -pstree { -settree -echo %user %pid %vsz %rss %state %command }
 PRELOAD
 
 sub get_all_pids() {
