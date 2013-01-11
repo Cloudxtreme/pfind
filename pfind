@@ -66,12 +66,17 @@ my $preload = <<'PRELOAD';
 	%status{%status_arg} := %fix_kb{%fileget{/proc/%_/status,pairkey=%status_arg}}
 	%name := %status{Name}
 
-	%uids_str := '%fileget{/proc/%_/status,pairkey=Uid}'
 	%SPACES_RE := -q '\s+'
+	%uids_str := '%fileget{/proc/%_/status,pairkey=Uid}'
 	%uid := '%fieldget{%uids_str,1,%SPACES_RE}'
 	%user := '%fileget{/etc/passwd,keynum=2,keyval=%uid,fieldno=0}'
 	%euid := '%fieldget{%uids_str,2,%SPACES_RE}'
 	%euser := '%fileget{/etc/passwd,keynum=2,keyval=%euid,fieldno=0}'
+	%gids_str := '%fileget{/proc/%_/status,pairkey=Gid}'
+	%gid := '%fieldget{%gids_str,1,%SPACES_RE}'
+	%group := '%fileget{/etc/group,keynum=2,keyval=%gid,fieldno=0}'
+	%egid := '%fieldget{%gids_str,2,%SPACES_RE}'
+	%egroup := '%fileget{/etc/group,keynum=2,keyval=%egid,fieldno=0}'
 
 	-cmd -user %user_arg { %user == %user_arg }
 
